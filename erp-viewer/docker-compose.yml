@@ -9,9 +9,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./sql:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
     restart: unless-stopped
+    networks:
+      - erp-net
 
   app:
     build: .
@@ -26,6 +26,11 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+    networks:
+      - erp-net
 
 volumes:
   pgdata:
+
+networks:
+  erp-net:
