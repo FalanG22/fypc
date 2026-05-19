@@ -23,8 +23,21 @@ services:
       DB_USER: postgres
       DB_PASSWORD: ${DB_PASSWORD:-b1618Awj}
       DB_NAME: fypc
+    restart: unless-stopped
+    networks:
+      - erp-net
+
+  proxy:
+    build: ./nginx
     ports:
-      - "3000:3000"
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - app
     restart: unless-stopped
     networks:
       - erp-net
