@@ -1,1 +1,3 @@
 node_modules/
+erp-viewer/sql/*.dump
+erp-viewer/sql/*.backup
