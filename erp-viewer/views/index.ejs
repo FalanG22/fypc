@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ERP Viewer - TANGO Gestión</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-size: .8rem; background: #f0f2f5; font-family: 'Segoe UI',Arial,sans-serif; }
+    .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; padding: 0; width: 230px; background: linear-gradient(180deg,#1a2332 0,#0f1520 100%); overflow-y: auto; }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
+    .sidebar .brand { padding: 14px 16px; border-bottom: 1px solid #1f2d3d; }
+    .sidebar .brand h6 { color: #ecf0f1; font-size: .82rem; margin: 0; letter-spacing: .3px; }
+    .sidebar .brand small { color: #5d7a9a; font-size: .65rem; }
+    .sidebar .mod-group { padding: 10px 16px 2px; color: #4a6a8a; font-size: .6rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+    .sidebar .nav-link { color: #8899aa; padding: 6px 16px; font-size: .78rem; border-left: 3px solid transparent; transition: all .15s; }
+    .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,.05); border-left-color: #3498db; }
+    .sidebar .nav-link.active { color: #fff; background: rgba(52,152,219,.15); border-left-color: #3498db; }
+    .sidebar .nav-link i { margin-right: 8px; width: 16px; text-align: center; font-size: .75rem; }
+    main { margin-left: 230px; padding: 20px 24px; min-height: 100vh; }
+    .card { border: none; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 16px; }
+    .card-header { background: #fff; border-bottom: 1px solid #eef1f5; font-weight: 600; padding: 10px 18px; font-size: .82rem; border-radius: 10px 10px 0 0 !important; }
+    .stat-card { padding: 18px; text-align: center; border-radius: 10px; transition: transform .15s; }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-card .number { font-size: 1.6rem; font-weight: 700; color: #1a2332; }
+    .stat-card .label { color: #7f8c8d; font-size: .7rem; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-card i { font-size: 1.4rem; color: #3498db; margin-bottom: 6px; }
+    .table th { font-weight: 600; color: #555; font-size: .7rem; text-transform: uppercase; white-space: nowrap; background: #f8f9fa; }
+    .table td { vertical-align: middle; font-size: .76rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .table-wrap { max-height: 65vh; overflow-y: auto; border-radius: 0 0 10px 10px; }
+    .table-wrap thead { position: sticky; top: 0; z-index: 2; }
+    .table-wrap thead th { position: sticky; top: 0; }
+    .detail-panel { background: #f8f9fa; border-radius: 8px; padding: 14px; }
+    .detail-panel dt { font-size: .68rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: .3px; margin-top: 6px; }
+    .detail-panel dd { margin-bottom: 2px; font-size: .8rem; }
+    .search-box { max-width: 380px; }
+    .nav-tabs .nav-link { font-size: .78rem; padding: 6px 14px; }
+    .nav-tabs .nav-link.active { font-weight: 600; }
+    .badge { font-size: .65rem; font-weight: 500; }
+    .loading { text-align: center; padding: 60px 20px; }
+    .loading .spinner-border { width: 2.5rem; height: 2.5rem; }
+    .row-click { cursor: pointer; }
+    .row-click:hover { background: #eef5ff !important; }
+    .schema-table-row { cursor: pointer; }
+    .schema-table-row:hover { background: #f0f7ff; }
+    .module-header { margin-bottom: 16px; }
+    .module-header h4 { font-size: 1.1rem; font-weight: 600; }
+    .module-header h4 i { color: #3498db; margin-right: 8px; }
+    .btn-sm { font-size: .75rem; }
+    .form-control-sm, .form-select-sm { font-size: .78rem; }
+  </style>
+</head>
+<body>
+  <nav class="sidebar" id="sidebar"></nav>
+  <main><div id="app-content"></div></main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const API = { async get(u) { const r=await fetch(u); if(!r.ok) throw await r.json(); return r.json(); } };
+    const $ = id => document.getElementById(id);
+    const esc = s => { const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; };
+    const fmt = (v,d) => v!=null&&v!=='' ? (d?Number(v).toFixed(d):v) : '';
+    const money = v => v!=null ? `$${Number(v).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '';
+
+    const MODULES = {
+      dashboard: { icon:'speedometer2', label:'Dashboard' },
+      comprobantes: { icon:'file-text', label:'Comprobantes' },
+      clientes: { icon:'people', label:'Clientes' },
+      proveedores: { icon:'truck', label:'Proveedores' },
+      stock: { icon:'box', label:'Stock / Productos' },
+      pedidos: { icon:'cart', label:'Pedidos' },
+      movmercaderia: { icon:'arrow-left-right', label:'Mov. Mercadería' },
+      movcaja: { icon:'cash', label:'Mov. Caja' },
+      cobranzas: { icon:'receipt', label:'Recibos / Cta.Cte.' },
+      ventas: { icon:'cart-check', label:'Ventas' },
+      compras_tesoreria: { icon:'wallet', label:'Compras / Tesorería' },
+      maestros: { icon:'bookmark-star', label:'Maestros' },
+      ctacte: { icon:'wallet2', label:'Cta.Cte.' },
+      produccion: { icon:'gear', label:'Producción' },
+      logistica: { icon:'truck-flatbed', label:'Logística' },
+      rrhh: { icon:'person-badge', label:'RRHH / Sueldos' },
+      tesoreria: { icon:'piggy-bank', label:'Tesorería' },
+      contabilidad: { icon:'journal', label:'Contabilidad' },
+      impuestos: { icon:'file-earmark-text', label:'Impuestos' },
+      obras: { icon:'building', label:'Obras / Licitaciones' },
+      activosfijos: { icon:'tools', label:'Activos Fijos' },
+      ecommerce: { icon:'shop', label:'E-Commerce' },
+      crm: { icon:'headset', label:'CRM / Incidentes' },
+      geografia: { icon:'geo-alt', label:'Geografía' },
+      schema: { icon:'database', label:'Explorador BD' },
+      auxiliares: { icon:'list', label:'Tablas Auxiliares' },
+    };
+
+    const GROUPS = [
+      { label:'Principales', items:['dashboard','comprobantes','clientes','proveedores','stock','pedidos','ventas'] },
+      { label:'Movimientos', items:['movmercaderia','movcaja','produccion','logistica'] },
+      { label:'Administración', items:['tesoreria','contabilidad','impuestos','cobranzas','ctacte','compras_tesoreria','obras','activosfijos'] },
+      { label:'RRHH', items:['rrhh'] },
+      { label:'Comercio Exterior', items:['ecommerce','crm'] },
+      { label:'Sistema', items:['geografia','schema','auxiliares'] },
+    ];
+
+    let currentModule = 'dashboard', currentData = [];
+    let moduleCache = {};
+
+    function buildSidebar() {
+      let html = `<div class="brand"><h6><i class="bi bi-database me-2"></i>ERP TANGO</h6><small>fypc &bull; PostgreSQL</small></div>`;
+      GROUPS.forEach(g => {
+        html += `<div class="mod-group">${g.label}</div>`;
+        g.items.forEach(m => {
+          const mod = MODULES[m];
+          if (!mod) return;
+          html += `<a class="nav-link" href="#" data-module="${m}"><i class="bi bi-${mod.icon}"></i>${mod.label}</a>`;
+        });
+      });
+      $('sidebar').innerHTML = html;
+      document.querySelectorAll('.sidebar .nav-link').forEach(a => {
+        a.addEventListener('click', e => { e.preventDefault(); loadModule(a.dataset.module); });
+      });
+    }
+
+    function renderLoading() { return '<div class="loading"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Cargando...</p></div>'; }
+
+    let sortGlob = { col: '', dir: 'asc', fn: null };
+
+    function buildSortableTable(cols, data) {
+      if (!data||!data.length) return '<div class="alert alert-info m-3">Sin resultados</div>';
+      let h = '<div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>';
+      cols.forEach(c => {
+        const active = sortGlob.col === c.key;
+        h += `<th style="cursor:pointer" onclick="sortCob('${c.key}')">${c.label} ${active ? (sortGlob.dir==='asc'?'▲':'▼') : '⇅'}</th>`;
+      });
+      h += '</tr></thead><tbody>';
+      let sorted = [...data];
+      if (sortGlob.col) {
+        const k = sortGlob.col, d = sortGlob.dir;
+        sorted.sort((a,b) => {
+          let va = a[k], vb = b[k];
+          if (va == null) va = ''; if (vb == null) vb = '';
+          if (typeof va === 'number') return d==='asc' ? va-vb : vb-va;
+          return d==='asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+        });
+      }
+      sorted.forEach((r,i) => {
+        h += '<tr>';
+        cols.forEach(c => {
+          let v = c.render ? c.render(r[c.key]) : esc(r[c.key]);
+          h += `<td>${v}</td>`;
+        });
+        h += '</tr>';
+      });
+      h += '</tbody></table></div>';
+      if (data.length >= 500) h += '<p class="text-muted small px-3 pb-2">Mostrando hasta 500 registros</p>';
+      return h;
+    }
+
+    window.sortCob = (col) => {
+      if (sortGlob.col === col) sortGlob.dir = sortGlob.dir === 'asc' ? 'desc' : 'asc';
+      else { sortGlob.col = col; sortGlob.dir = 'asc'; }
+      loadCobTab();
+    };
+
+    function buildTable(cols, data, rowKey) {
+      if (!data||!data.length) return '<div class="alert alert-info m-3">Sin resultados</div>';
+      let h = '<div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>';
+      cols.forEach(c => { h+=`<th>${c.label}</th>`; });
+      h+='</tr></thead><tbody>';
+      data.forEach((r,i) => {
+        const key = rowKey ? r[rowKey] : i;
+        h+=`<tr class="row-click" onclick="showDetail('${key}')">`;
+        cols.forEach(c => {
+          let v = c.render ? c.render(r[c.key]) : esc(r[c.key]);
+          h+=`<td>${v}</td>`;
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table></div>';
+      if(data.length>=500) h+='<p class="text-muted small px-3 pb-2">Mostrando hasta 500 registros</p>';
+      return h;
+    }
+
+    function buildSearchInput(placeholder) {
+      return `<div class="row g-2 mb-3 align-items-center">
+        <div class="col-md-5">
+          <div class="input-group input-group-sm search-box">
+            <input type="text" class="form-control" id="s" placeholder="${placeholder}">
+            <button class="btn btn-primary" onclick="doSearch()"><i class="bi bi-search"></i></button>
+            <button class="btn btn-outline-secondary" onclick="clearSearch()"><i class="bi bi-x-lg"></i></button>
+          </div>
+        </div>
+        <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="fd"></div>
+        <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="fh"></div>
+        <div class="col-md-1"><select class="form-select form-select-sm" id="lim"><option value="100">100</option><option value="500" selected>500</option><option value="1000">1000</option></select></div>
+      </div>
+      <div id="r"></div><div id="d"></div>`;
+    }
+
+    function sp() {
+      const p=new URLSearchParams();
+      const s=$('s')?.value; if(s) p.set('search',s);
+      const fd=$('fd')?.value; if(fd) p.set('desde',fd);
+      const fh=$('fh')?.value; if(fh) p.set('hasta',fh);
+      p.set('limit',$('lim')?.value||'500');
+      return p.toString();
+    }
+
+    function doSearch() { loadModule(currentModule); }
+    function clearSearch() { ['s','fd','fh'].forEach(id=>{const e=$(id);if(e)e.value='';}); doSearch(); }
+
+    function showDetail(id) {
+      const fn = DETAIL_FUNCS[currentModule];
+      if (fn) fn(id);
+    }
+
+    function renderSimple(endpoint, cols, rowKey, title, placeholder) {
+      $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-${MODULES[currentModule]?.icon||'table'}"></i>${title}</h4></div>${buildSearchInput(placeholder||'Buscar...')}<div id="r"></div>`;
+      const r=$('r'); r.innerHTML=renderLoading();
+      API.get(`/api/${endpoint}?${sp()}`).then(d=>{currentData=d;r.innerHTML=buildTable(cols,d,rowKey);}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
+    }
+
+    function loadModule(mod) {
+      currentModule = mod;
+      document.querySelectorAll('.sidebar .nav-link').forEach(l=>l.classList.remove('active'));
+      document.querySelector(`.nav-link[data-module="${mod}"]`)?.classList.add('active');
+      const fn = MODULE_FUNCS[mod];
+      if (fn) fn();
+      else $('app-content').innerHTML = '<div class="alert alert-warning">Módulo no implementado</div>';
+    }
+
+    function renderTabs(tabs, defaultTab, contentFn) {
+      let h = `<ul class="nav nav-tabs mb-3" id="tabs">`;
+      tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${t.id}">${t.label}</a></li>`; });
+      h+=`</ul><div id="tabc"></div>`;
+      $('app-content').innerHTML = h;
+      contentFn(tabs[0].id);
+      document.querySelectorAll('#tabs .nav-link').forEach(a => {
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          document.querySelectorAll('#tabs .nav-link').forEach(l=>l.classList.remove('active'));
+          a.classList.add('active');
+          contentFn(a.dataset.tab);
+        });
+      });
+    }
+
+    async function tabContent(endpointMap, tabId, title) {
+      const c = $('tabc');
+      c.innerHTML = renderLoading();
+      const ep = endpointMap[tabId];
+      if (!ep) { c.innerHTML='<div class="alert alert-info">Seleccione una pestaña</div>'; return; }
+      try {
+        const d = await API.get(`/api/${ep}?limit=300`);
+        c.innerHTML = `<div class="card"><div class="card-header">${title||'Datos'}</div><div class="card-body p-0">${buildTable(epCols(ep)||[{key:'id',label:'ID'}],d)}</div></div>`;
+      } catch(e) { c.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`; }
+    }
+
+    function epCols(ep) {
+      const MAP = {
+        'rrhh/empleados': [{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'documento',label:'Doc'},{key:'cuil',label:'CUIL'},{key:'area_nombre',label:'Area'},{key:'categoria_nombre',label:'Categoría'},{key:'puesto_nombre',label:'Puesto'},{key:'fechaing',label:'Ingreso'},{key:'estado',label:'Estado',render:v=>v==1?'Activo':'Inactivo'}],
+        'rrhh/liquidaciones': [{key:'id',label:'ID'},{key:'nombre',label:'Nombre'},{key:'fecha',label:'Fecha'},{key:'tipo',label:'Tipo'},{key:'periodo_nombre',label:'Período'},{key:'apertura',label:'Apertura'},{key:'cierre',label:'Cierre'},{key:'fechapag',label:'Pago'}],
+        'rrhh/novedades': [{key:'id',label:'ID'},{key:'empleado_nombre',label:'Empleado'},{key:'periodoid',label:'Período'}],
+        'rrhh/conceptos': [{key:'id',label:'ID'},{key:'nombre',label:'Nombre'},{key:'tipo',label:'Tipo'},{key:'importe',label:'Importe',render:money},{key:'tipoliq',label:'TipoLiq'}],
+        'produccion/ordenes': [{key:'numero',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'proceso_nombre',label:'Proceso'},{key:'programa_nombre',label:'Programa'},{key:'obra_nombre',label:'Obra'},{key:'estadointerno',label:'Estado'}],
+        'produccion/procesos': [{key:'id',label:'ID'},{key:'nombre',label:'Nombre'},{key:'sector_nombre',label:'Sector'},{key:'tiempo',label:'Tiempo'},{key:'costo',label:'Costo',render:money}],
+        'logistica/rutas': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'},{key:'transporteid',label:'Transporte'},{key:'conductorid',label:'Conductor'},{key:'depositoid',label:'Depósito'},{key:'direccion',label:'Dirección'},{key:'localidad',label:'Localidad'}],
+        'logistica/hruta': [{key:'id',label:'ID'},{key:'ruta_nombre',label:'Ruta'},{key:'fecha',label:'Fecha'},{key:'estado_nombre',label:'Estado'},{key:'detalle',label:'Detalle'},{key:'volumen',label:'Volumen'},{key:'peso',label:'Peso'},{key:'transporteid',label:'Transporte'},{key:'conductorid',label:'Conductor'}],
+        'logistica/hrutai': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'}],
+        'logistica/hestados': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'},{key:'accion',label:'Acción'}],
+        'logistica/rutaclientes': [{key:'id',label:'ID'},{key:'ruta_nombre',label:'Ruta'},{key:'cli_nombre',label:'Cliente'},{key:'detalle',label:'Detalle'},{key:'orden',label:'Orden'},{key:'activo',label:'Activo'}],
+        'logistica/rutadocs': [{key:'id',label:'ID'},{key:'ruta_nombre',label:'Ruta'},{key:'documentoid',label:'Documento'},{key:'detalle',label:'Detalle'},{key:'clase',label:'Clase'}],
+        'logistica/configdocs': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'},{key:'codigo',label:'Código'}],
+        'logistica/camiones': [{key:'codigo',label:'Cód'},{key:'patente',label:'Patente'},{key:'detalle',label:'Detalle'},{key:'chofer',label:'Chofer'},{key:'chasis',label:'Chasis'},{key:'tara',label:'Tara'},{key:'cargamax',label:'Carga Max'}],
+        'logistica/choferes': [{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'documento',label:'Doc'},{key:'camion',label:'Camión'}],
+        'logistica/despachos': [{key:'codigo',label:'Cód'},{key:'numero',label:'Nro'},{key:'detalle',label:'Detalle'},{key:'fembarque',label:'Embarca'},{key:'fpartida',label:'Partida'},{key:'farribo',label:'Arriba'},{key:'buque',label:'Buque'},{key:'carpeta',label:'Carpeta'},{key:'flete',label:'Flete'}],
+        'obras/licitaciones': [{key:'licitacion',label:'Licitación'},{key:'fecha',label:'Fecha'},{key:'obra_nombre',label:'Obra'},{key:'tipo_nombre',label:'Tipo'},{key:'estado_nombre',label:'Estado'},{key:'expediente',label:'Expediente'},{key:'presup_imp',label:'Presup',render:money}],
+        'obras/polizas': [{key:'poliza',label:'Póliza'},{key:'asegura',label:'Aseguradora'},{key:'fechaemi',label:'Emisión'},{key:'fechaven',label:'Venc'},{key:'obra_nombre',label:'Obra'},{key:'suma_imp',label:'Suma',render:money},{key:'estado_nombre',label:'Estado'}],
+        'ecommerce/productos': [{key:'nombre',label:'Nombre'},{key:'stock_detalle',label:'Artículo'},{key:'precio',label:'Precio',render:money},{key:'categoria_nombre',label:'Categoría'},{key:'tipo_nombre',label:'Tipo'},{key:'estado_nombre',label:'Estado'},{key:'moneda',label:'Moneda'}],
+        'impuestos/percepciones': [{key:'id',label:'ID',render:v=>v?v.substring(0,8):''},{key:'label',label:'Nombre'},{key:'alicuota',label:'Alic %',render:v=>v?`${v}%`:''},{key:'tipo_nombre',label:'Tipo'},{key:'jurisdiccion',label:'Jurisd.'},{key:'modulo',label:'Módulo'},{key:'padron',label:'Padrón'}],
+        'impuestos/retenciones': [{key:'id',label:'ID',render:v=>v?v.substring(0,8):''},{key:'label',label:'Retención'},{key:'campo',label:'Campo'},{key:'tipo',label:'Tipo'},{key:'modulo',label:'Módulo'},{key:'alicuotaprov',label:'AlicProv'}],
+        'impuestos/ivare': [{key:'codigo',label:'Cód'},{key:'detalle',label:'Detalle'},{key:'clase',label:'Clase'},{key:'civa',label:'CIVA'}],
+        'impuestos/regiva': [{key:'codigo',label:'Cód'},{key:'detalle',label:'Detalle'},{key:'clase',label:'Clase'},{key:'civa',label:'CIVA'},{key:'regiva_arca',label:'ARCA'}],
+        'impuestos/taxs': [{key:'id',label:'ID'},{key:'titulo',label:'Título'},{key:'habilitado',label:'Habilitado',render:v=>v===1?'Si':'No'}],
+        'impuestos/alicuotas': [{key:'label',label:'Nombre'},{key:'alicuota',label:'Alic %',render:v=>v?`${v}%`:''},{key:'campo',label:'Campo'},{key:'tiposujeto',label:'TipoSujeto'},{key:'percepmin',label:'PercepMin',render:money}],
+        'impuestos/tramosiva': [{key:'codigo',label:'Cód'},{key:'detalle',label:'Detalle'},{key:'alicuota',label:'Alic %',render:v=>v?`${v}%`:''},{key:'aplicacion',label:'Aplic %',render:v=>v?`${v}%`:''}],
+        'impuestos/tramosretencion': [{key:'codigo',label:'Cód'},{key:'detalle',label:'Detalle'}],
+        'impuestos/logafip': [{key:'id',label:'ID',render:v=>v?v.substring(0,12):''},{key:'detalle',label:'Detalle'},{key:'tipodoc',label:'TipoDoc'},{key:'puntovta',label:'PtoVta'},{key:'numero',label:'Nro'},{key:'cae',label:'CAE'},{key:'fechacae',label:'Fec.CAE'},{key:'estado',label:'Estado'}],
+        'impuestos/padronbsas': [{key:'cuit',label:'CUIT'},{key:'tipo',label:'Tipo'},{key:'alicp',label:'AlicP'},{key:'alicr',label:'AlicR'},{key:'grupor',label:'GrupoR'},{key:'fecha_vig_desde',label:'Vig.Desde'},{key:'fecha_vig_hasta',label:'Vig.Hasta'}],
+        'cobranzas/recibos': [{key:'fecha',label:'Fecha'},{key:'comp',label:'Comprobante'},{key:'nombre',label:'Cliente'},{key:'cuit',label:'CUIT'},{key:'neto',label:'Neto',render:money},{key:'iva',label:'IVA',render:money},{key:'percepcion',label:'Percep.',render:money},{key:'total',label:'Total',render:money},{key:'pago_nombre',label:'Pago'},{key:'estadoreg',label:'Estado'}],
+        'cobranzas/aplicaciones': [{key:'id',label:'ID',render:v=>v?v.substring(0,8):''},{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'persona_nombre',label:'Persona'},{key:'totcomp',label:'Total',render:money},{key:'totsaldo',label:'Saldo',render:money},{key:'cancela',label:'Cancela',render:money},{key:'cuota',label:'Cuota'},{key:'fechaven',label:'Venc'}],
+        'cobranzas/valores': [{key:'tipo',label:'Tipo'},{key:'importe',label:'Importe',render:money},{key:'cajadet',label:'Detalle'},{key:'caja',label:'Caja'},{key:'interno',label:'Interno'},{key:'banco_mostrar',label:'Banco'},{key:'numero_mostrar',label:'Nro'}],
+        'cobranzas/pagos': [{key:'pago',label:'Cód'},{key:'detalle',label:'Detalle'},{key:'tasa',label:'Tasa'},{key:'dias1',label:'Días'}],
+        'ventas': [{key:'fecha',label:'Fecha'},{key:'comp',label:'Nro'},{key:'codigo',label:'Tipo'},{key:'nombre',label:'Cliente'},{key:'cuit',label:'CUIT'},{key:'neto',label:'Neto',render:money},{key:'iva',label:'IVA',render:money},{key:'total',label:'Total',render:money},{key:'vendedor',label:'Vendedor'},{key:'estadodoc',label:'Estado'}],
+        'compras-tesoreria/ordenespago': [{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'nombre',label:'Proveedor'},{key:'neto',label:'Neto',render:money},{key:'total',label:'Total',render:money},{key:'pago_nombre',label:'Pago'},{key:'estadoreg',label:'Estado'}],
+        'compras-tesoreria/egresos': [{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'detalle',label:'Detalle'},{key:'proveedor',label:'Proveedor'},{key:'impsale',label:'Egreso',render:money},{key:'cuenta_nombre',label:'Cuenta'},{key:'banco_nombre',label:'Banco'},{key:'tipo',label:'Tipo'}],
+        'compras-tesoreria/comprobantescompra': [{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'nombre',label:'Proveedor'},{key:'cuit',label:'CUIT'},{key:'neto',label:'Neto',render:money},{key:'total',label:'Total',render:money}],
+        'maestros/clientes': [{key:'cliente',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'cuit',label:'CUIT'},{key:'domicilio',label:'Domicilio'},{key:'localidad',label:'Localidad'},{key:'provincia_nombre',label:'Prov'},{key:'vendedor_nombre',label:'Vendedor'},{key:'pago_nombre',label:'Pago'},{key:'cta_contable_codigo',label:'Cta.Contable'},{key:'credito',label:'Crédito',render:money},{key:'taxcond',label:'Cond.IVA'}],
+        'maestros/proveedores': [{key:'proveedor',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'cuit',label:'CUIT'},{key:'domicilio',label:'Domicilio'},{key:'localidad',label:'Localidad'},{key:'provincia_nombre',label:'Prov'},{key:'saldo',label:'Saldo',render:money},{key:'cta_pasivo_codigo',label:'Cta.Pasivo'},{key:'ivare',label:'IVA'}],
+        'maestros/plancuentas': [{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'imputable',label:'Imputable'},{key:'agrupa',label:'Agrupa'},{key:'nivel',label:'Nivel'},{key:'cencos',label:'C.Costo'},{key:'presupuestario',label:'Presup'}],
+        'ctacte/resumen': [{key:'cliente',label:'Cód'},{key:'nombre',label:'Cliente'},{key:'cuit',label:'CUIT'},{key:'debe_total',label:'Debe',render:money},{key:'haber_total',label:'Haber',render:money},{key:'saldo_actual',label:'Saldo',render:v=>`<span class="${v<0?'text-success':'text-danger'}">${money(v)}</span>`},{key:'vencido',label:'Vencido',render:money},{key:'credito',label:'Límite',render:money},{key:'ultimo_mov',label:'Últ.Mov'}],
+        'ctacte/detalle': [{key:'fecha',label:'Fecha'},{key:'codigo',label:'Tipo'},{key:'comp',label:'Comp'},{key:'debe',label:'Debe',render:money},{key:'haber',label:'Haber',render:money},{key:'saldo_parcial',label:'Saldo',render:v=>`<span class="${v<0?'text-success':'text-danger'}">${money(v)}</span>`},{key:'fechaven',label:'Venc'},{key:'tipo_nombre',label:'Nombre'}],
+        'crm/incidentes': [{key:'numero',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'descripcion',label:'Descripción'},{key:'cliente_nombre',label:'Cliente'},{key:'estado_nombre',label:'Estado'},{key:'tipo_nombre',label:'Tipo'},{key:'grupo_nombre',label:'Grupo'}],
+        'activosfijos/bienes': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'},{key:'serie',label:'Serie'},{key:'articulo_detalle',label:'Artículo'},{key:'clase_nombre',label:'Clase'},{key:'fechaalta',label:'Alta'},{key:'valorcompra',label:'Valor',render:money},{key:'estado',label:'Estado',render:v=>v===1?'Activo':'Baja'}],
+      };
+      return MAP[ep];
+    }
+
+    const MODULE_FUNCS = {
+      dashboard: async () => {
+        $('app-content').innerHTML = renderLoading();
+        try {
+          const r = await API.get('/api/stats');
+          const main = r.main, extra = r.extra;
+          let h = `<div class="module-header"><h4><i class="bi bi-speedometer2"></i>Dashboard</h4></div>
+            <div class="row g-3 mb-4">`;
+          const icons = {clientes:'people',stock:'box','movi (comprobantes)':'file-text',pedidos:'cart',proveedo:'truck',movmer:'arrow-left-right',cajamov:'cash',transacasientos:'journal'};
+          main.forEach(s => {
+            h += `<div class="col-md-3"><div class="card stat-card"><i class="bi bi-${icons[s.tabla]||'table'}"></i>
+              <div class="number">${Number(s.total).toLocaleString()}</div>
+              <div class="label">${s.tabla}</div></div></div>`;
+          });
+          h += `</div><div class="row g-3 mb-3">`;
+          const xicons = {s_empleados:'person-badge',p_ordenes:'gear',o_licitacion:'building',af_bien:'tools',o_ec_products:'shop',hd_incidentes:'headset',logi_rutas:'truck'};
+          extra.forEach(s => {
+            h += `<div class="col-md-3"><div class="card stat-card"><i class="bi bi-${xicons[s.tabla]||'table'}"></i>
+              <div class="number">${Number(s.total).toLocaleString()}</div>
+              <div class="label">${s.tabla}</div></div></div>`;
+          });
+          h += `</div><div class="card"><div class="card-header"><i class="bi bi-info-circle me-2"></i>ERP TANGO Viewer</div>
+            <div class="card-body"><p class="mb-0 text-muted">Seleccione un módulo en el menú lateral para explorar. Base de datos: <strong>fypc</strong> (PostgreSQL).</p></div></div>`;
+          $('app-content').innerHTML = h;
+        } catch(e) {
+          $('app-content').innerHTML = `<div class="alert alert-danger">Error: ${e.error||e.message}</div>`;
+        }
+      },
+      comprobantes: () => renderSimple('comprobantes',[
+        {key:'comp',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'tipocomprobante',label:'Tipo'},
+        {key:'nombre',label:'Cliente'},{key:'neto',label:'Neto',render:money},{key:'iva',label:'IVA',render:money},
+        {key:'total',label:'Total',render:money},{key:'estadodoc',label:'Estado'}
+      ],'moviid','Comprobantes / Facturas','Buscar: nro, cliente...'),
+      clientes: () => renderSimple('clientes',[
+        {key:'cliente',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'deno',label:'Denominación'},
+        {key:'cuit',label:'CUIT'},{key:'domicilio',label:'Domicilio'},{key:'localidad',label:'Localidad'},
+        {key:'provnom',label:'Prov'},{key:'email',label:'Email'},{key:'telefono',label:'Tel'},
+        {key:'credito',label:'Crédito',render:money}
+      ],'clienteid','Clientes','Buscar: nombre, cuit...'),
+      proveedores: () => renderSimple('proveedores',[
+        {key:'proveedor',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'deno',label:'Denominación'},
+        {key:'cuit',label:'CUIT'},{key:'domicilio',label:'Domicilio'},{key:'localidad',label:'Localidad'},
+        {key:'provnom',label:'Prov'},{key:'telefono',label:'Tel'},{key:'saldo',label:'Saldo',render:money}
+      ],'proveedor','Proveedores','Buscar: nombre, cuit...'),
+      stock: () => {
+        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-box"></i>Stock / Productos</h4></div>
+          <div class="row g-2 mb-3"><div class="col-md-5"><div class="input-group input-group-sm search-box">
+            <input type="text" class="form-control" id="s" placeholder="Buscar: código, descripción...">
+            <button class="btn btn-primary" onclick="doSearch()"><i class="bi bi-search"></i></button>
+            <button class="btn btn-outline-secondary" onclick="clearSearch()"><i class="bi bi-x-lg"></i></button></div></div>
+          <div class="col-md-2"><select class="form-select form-select-sm" id="rubroF" onchange="doSearch()"><option value="">Todos los rubros</option></select></div>
+          <div class="col-md-1"><select class="form-select form-select-sm" id="lim"><option value="100">100</option><option value="500" selected>500</option><option value="1000">1000</option></select></div></div>
+          <div id="r"></div><div id="d"></div>`;
+        API.get('/api/stock/rubros').then(rubros=>{
+          const sel=$('rubroF');
+          rubros.forEach(r=>{sel.innerHTML+=`<option value="${r.codigo}">${r.nombre}</option>`;});
+        }).catch(()=>{});
+        const r=$('r'); r.innerHTML=renderLoading();
+        const p=sp(); const rub=$('rubroF')?.value; if(rub) p.set('rubro',rub);
+        API.get(`/api/stock?${p}`).then(d=>{currentData=d;r.innerHTML=buildTable([
+          {key:'clave',label:'Código'},{key:'detalle',label:'Descripción'},{key:'rubro_nombre',label:'Rubro'},
+          {key:'linea_nombre',label:'Línea'},{key:'unidad',label:'Unidad'},{key:'codbar',label:'Barra'},
+          {key:'precio',label:'Precio',render:money},{key:'preciopro',label:'Costo',render:money}
+        ],d,'stockid');}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
+      },
+      pedidos: () => renderSimple('pedidos',[
+        {key:'numero',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'cli_nombre',label:'Cliente'},
+        {key:'art_detalle',label:'Artículo'},{key:'cantidad',label:'Cant',render:v=>Number(v||0).toFixed(2)},
+        {key:'precio',label:'Precio',render:money},{key:'estado',label:'Estado'},{key:'cumplido',label:'Cumplido'}
+      ],'pedidoid','Pedidos','Buscar: nro, artículo, cliente...'),
+      movmercaderia: () => renderSimple('movimientos/mercaderia',[
+        {key:'fecha',label:'Fecha'},{key:'remito',label:'Remito'},{key:'factura',label:'Factura'},
+        {key:'cliente',label:'Cliente'},{key:'art_detalle',label:'Artículo'},{key:'cantidad',label:'Cant',render:v=>fmt(Number(v||0),2)},
+        {key:'precio',label:'Precio',render:money},{key:'deposito',label:'Depósito'},{key:'tipomov',label:'Tipo'}
+      ],null,'Movimientos de Mercadería','Buscar: remito, factura...'),
+      movcaja: () => renderSimple('movimientos/caja',[
+        {key:'fecha',label:'Fecha'},{key:'comp',label:'Comprobante'},{key:'detalle',label:'Detalle'},
+        {key:'cliente',label:'Cliente'},{key:'proveedor',label:'Proveedor'},{key:'cuenta',label:'Cuenta'},
+        {key:'banco_nombre',label:'Banco'},{key:'impentra',label:'Ingreso',render:money},{key:'impsale',label:'Egreso',render:money}
+      ],null,'Movimientos de Caja / Bancos','Buscar: comprobante, detalle...'),
+      rrhh: () => {
+        const tabs = [
+          {id:'empleados',label:'Empleados'},{id:'liquidaciones',label:'Liquidaciones'},
+          {id:'novedades',label:'Novedades'},{id:'conceptos',label:'Conceptos'},
+          {id:'areas',label:'Áreas'},{id:'puestos',label:'Puestos'},{id:'obrasociales',label:'O.Sociales'},
+          {id:'sindicatos',label:'Sindicatos'},{id:'periodos',label:'Períodos'}
+        ];
+        const epMap = {empleados:'rrhh/empleados',liquidaciones:'rrhh/liquidaciones',novedades:'rrhh/novedades',conceptos:'rrhh/conceptos',areas:'rrhh/areas',puestos:'rrhh/puestos',obrasociales:'rrhh/obrasociales',sindicatos:'rrhh/sindicatos',periodos:'rrhh/periodos'};
+        renderTabs(tabs,'empleados',tid=>tabContent(epMap,tid,'RRHH'));
+      },
+      produccion: () => {
+        const tabs = [{id:'ordenes',label:'Órdenes'},{id:'procesos',label:'Procesos'},{id:'programas',label:'Programas'},{id:'sectores',label:'Sectores'},{id:'partes',label:'Partes'},{id:'alternativas',label:'Alternativas'}];
+        const epMap = {ordenes:'produccion/ordenes',procesos:'produccion/procesos',programas:'produccion/programas',sectores:'produccion/sectores',partes:'produccion/partes',alternativas:'produccion/alternativas'};
+        renderTabs(tabs,'ordenes',tid=>tabContent(epMap,tid,'Producción'));
+      },
+      logistica: () => {
+        const tabs = [
+          {id:'rutas',label:'Rutas'},{id:'hruta',label:'Historial Rutas'},
+          {id:'hrutai',label:'Items Ruta'},{id:'hestados',label:'Estados Ruta'},
+          {id:'rutaclientes',label:'Ruta-Clientes'},{id:'rutadocs',label:'Docs Ruta'},
+          {id:'configdocs',label:'Config Docs'},{id:'camiones',label:'Camiones'},
+          {id:'choferes',label:'Choferes'},{id:'despachos',label:'Despachos'}
+        ];
+        const epMap = {
+          rutas:'logistica/rutas',hruta:'logistica/hruta',hrutai:'logistica/hrutai',
+          hestados:'logistica/hestados',rutaclientes:'logistica/rutaclientes',
+          rutadocs:'logistica/rutadocs',configdocs:'logistica/configdocs',
+          camiones:'logistica/camiones',choferes:'logistica/choferes',
+          despachos:'logistica/despachos'
+        };
+        renderTabs(tabs,'rutas',tid=>tabContent(epMap,tid,'Logística'));
+      },
+      tesoreria: async () => {
+        $('app-content').innerHTML = renderLoading();
+        try {
+          const[bancos,cuentas,pagos]=await Promise.all([API.get('/api/tesoreria/bancos'),API.get('/api/tesoreria/cuentas'),API.get('/api/tesoreria/pagos')]);
+          $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-piggy-bank"></i>Tesorería</h4></div>
+            <div class="row"><div class="col-md-6"><div class="card"><div class="card-header">Bancos</div><div class="card-body p-0">${buildTable([{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'clearing',label:'Clearing'}],bancos)}</div></div></div>
+            <div class="col-md-6"><div class="card"><div class="card-header">Cuentas Bancarias</div><div class="card-body p-0">${buildTable([{key:'cuenta',label:'Cuenta'},{key:'nombre',label:'Nombre'},{key:'caja',label:'Caja'},{key:'moneda',label:'Moneda'}],cuentas)}</div></div></div></div>
+            <div class="card"><div class="card-header">Medios de Pago</div><div class="card-body p-0">${buildTable([{key:'pago',label:'Cód'},{key:'detalle',label:'Detalle'},{key:'tasa',label:'Tasa'},{key:'dias1',label:'Días'}],pagos)}</div></div>`;
+        } catch(e){$('app-content').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+      },
+      ventas: () => renderSimple('ventas',[
+        {key:'fecha',label:'Fecha'},{key:'comp',label:'Nro'},{key:'codigo',label:'Tipo'},
+        {key:'nombre',label:'Cliente'},{key:'cuit',label:'CUIT'},{key:'neto',label:'Neto',render:money},
+        {key:'iva',label:'IVA',render:money},{key:'total',label:'Total',render:money},
+        {key:'vendedor',label:'Vendedor'},{key:'estadodoc',label:'Estado'}
+      ],'moviid','Ventas - Facturación','Buscar: nro, cliente, cuit...'),
+      cobranzas: () => {
+        const tabs = [
+          {id:'recibos',label:'Recibos',ep:'cobranzas/recibos',cols:epCols('cobranzas/recibos')},
+          {id:'aplicaciones',label:'Aplicaciones Cta.Cte.',ep:'cobranzas/aplicaciones',cols:epCols('cobranzas/aplicaciones')},
+          {id:'valores',label:'Valores',ep:'cobranzas/valores',cols:epCols('cobranzas/valores')},
+          {id:'pagos',label:'Medios de Pago',ep:'cobranzas/pagos',cols:epCols('cobranzas/pagos')}
+        ];
+        let curTab = tabs[0];
+        let sortCol = '', sortDir = 'asc';
+
+        function renderCob() {
+          let h = `<div class="module-header"><h4><i class="bi bi-receipt"></i>Recibos y Cta. Cte.</h4></div>
+            <ul class="nav nav-tabs mb-3" id="cobTabs">`;
+          tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${i}">${t.label}</a></li>`; });
+          h+=`</ul>
+            <div class="row g-2 mb-3 align-items-center">
+              <div class="col-md-4"><div class="input-group input-group-sm">
+                <input type="text" class="form-control" id="cobS" placeholder="Buscar...">
+                <button class="btn btn-primary" onclick="loadCobTab()"><i class="bi bi-search"></i></button>
+                <button class="btn btn-outline-secondary" onclick="clearCob()"><i class="bi bi-x-lg"></i></button></div></div>
+              <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="cobD"></div>
+              <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="cobH"></div>
+              <div class="col-md-1"><select class="form-select form-select-sm" id="cobL"><option value="100">100</option><option value="500" selected>500</option></select></div>
+            </div>
+            <div id="cobR"></div>`;
+          $('app-content').innerHTML = h;
+
+          document.querySelectorAll('#cobTabs .nav-link').forEach(a => {
+            a.addEventListener('click', e => {
+              e.preventDefault();
+              document.querySelectorAll('#cobTabs .nav-link').forEach(l=>l.classList.remove('active'));
+              a.classList.add('active');
+              curTab = tabs[parseInt(a.dataset.tab)];
+              sortCol = ''; sortDir = 'asc';
+              loadCobTab();
+            });
+          });
+          loadCobTab();
+        }
+
+        window.loadCobTab = async () => {
+          if (!curTab) return;
+          const r = $('cobR'); if (!r) return;
+          r.innerHTML = renderLoading();
+          const p = new URLSearchParams();
+          const s = $('cobS')?.value; if (s) p.set('search', s);
+          const fd = $('cobD')?.value; if (fd) p.set('desde', fd);
+          const fh = $('cobH')?.value; if (fh) p.set('hasta', fh);
+          p.set('limit', $('cobL')?.value || '500');
+          if (sortCol) { p.set('order', sortCol); p.set('sort', sortDir); }
+          try {
+            const d = await API.get(`/api/${curTab.ep}?${p.toString()}`);
+            r.innerHTML = `<div class="card"><div class="card-header d-flex justify-content-between">
+              <span>${curTab.label}</span><span class="text-muted small">${d.length} registros</span></div>
+              <div class="card-body p-0">${buildSortableTable(curTab.cols, d)}</div></div>`;
+          } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+
+        window.clearCob = () => {
+          ['cobS','cobD','cobH'].forEach(id=>{const e=$(id);if(e)e.value='';});
+          sortCol=''; sortDir='asc';
+          loadCobTab();
+        };
+
+        renderCob();
+      },
+      compras_tesoreria: () => {
+        const tabs = [
+          {id:'ordenespago',label:'Órdenes de Pago',ep:'compras-tesoreria/ordenespago',cols:epCols('compras-tesoreria/ordenespago')},
+          {id:'egresos',label:'Egresos',ep:'compras-tesoreria/egresos',cols:epCols('compras-tesoreria/egresos')},
+          {id:'comprobantescompra',label:'Comprobantes Compra',ep:'compras-tesoreria/comprobantescompra',cols:epCols('compras-tesoreria/comprobantescompra')}
+        ];
+        let curTab = tabs[0];
+        function renderCT() {
+          let h = `<div class="module-header"><h4><i class="bi bi-wallet"></i>Compras / Tesorería</h4></div>
+            <ul class="nav nav-tabs mb-3" id="ctTabs">`;
+          tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${i}">${t.label}</a></li>`; });
+          h+=`</ul>
+            <div class="row g-2 mb-3 align-items-center">
+              <div class="col-md-4"><div class="input-group input-group-sm">
+                <input type="text" class="form-control" id="ctS" placeholder="Buscar...">
+                <button class="btn btn-primary" onclick="loadCTTab()"><i class="bi bi-search"></i></button>
+                <button class="btn btn-outline-secondary" onclick="clearCT()"><i class="bi bi-x-lg"></i></button></div></div>
+              <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="ctD"></div>
+              <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="ctH"></div>
+              <div class="col-md-1"><select class="form-select form-select-sm" id="ctL"><option value="100">100</option><option value="500" selected>500</option></select></div>
+            </div>
+            <div id="ctR"></div>`;
+          $('app-content').innerHTML = h;
+          document.querySelectorAll('#ctTabs .nav-link').forEach(a => {
+            a.addEventListener('click', e => {
+              e.preventDefault();
+              document.querySelectorAll('#ctTabs .nav-link').forEach(l=>l.classList.remove('active'));
+              a.classList.add('active');
+              curTab = tabs[parseInt(a.dataset.tab)];
+              loadCTTab();
+            });
+          });
+          loadCTTab();
+        }
+        window.loadCTTab = async () => {
+          if (!curTab) return;
+          const r = $('ctR'); if (!r) return;
+          r.innerHTML = renderLoading();
+          const p = new URLSearchParams();
+          const s = $('ctS')?.value; if (s) p.set('search', s);
+          const fd = $('ctD')?.value; if (fd) p.set('desde', fd);
+          const fh = $('ctH')?.value; if (fh) p.set('hasta', fh);
+          p.set('limit', $('ctL')?.value || '500');
+          try {
+            const d = await API.get(`/api/${curTab.ep}?${p.toString()}`);
+            r.innerHTML = `<div class="card"><div class="card-header d-flex justify-content-between">
+              <span>${curTab.label}</span><span class="text-muted small">${d.length} registros</span></div>
+              <div class="card-body p-0">${buildTable(curTab.cols, d, curTab.id==='ordenespago'?'promoviid':null)}</div></div>`;
+            if (curTab.id==='ordenespago') {
+              document.querySelectorAll('#ctR .row-click').forEach((el,i) => {
+                el.addEventListener('click', () => showOPDetalle(d[i].promoviid));
+              });
+            }
+          } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+        window.clearCT = () => { ['ctS','ctD','ctH'].forEach(id=>{const e=$(id);if(e)e.value='';}); loadCTTab(); };
+        window.showOPDetalle = async (promoviid) => {
+          const r = $('ctR'); if (!r) return;
+          r.innerHTML = renderLoading();
+          try {
+            const res = await API.get(`/api/compras-tesoreria/ordenespago/${promoviid}/aplicacion`);
+            const ord = res.orden;
+            const imps = res.imputaciones || [];
+            let h = `<div class="card mb-2"><div class="card-header d-flex justify-content-between">
+              <span><strong>OP ${ord.comp}</strong> - ${esc(ord.nombre)}</span>
+              <button class="btn btn-sm btn-outline-secondary" onclick="loadCTTab()"><i class="bi bi-arrow-left"></i> Volver</button></div>
+              <div class="card-body">
+                <div class="row text-center mb-3">
+                  <div class="col-6"><small class="text-muted">Total OP</small><div class="fw-bold fs-5">${money(res.total_orden)}</div></div>
+                  <div class="col-6"><small class="text-muted">Total Aplicado</small><div class="fw-bold fs-5 ${(res.total_orden - res.total_aplicado)===0?'text-success':'text-warning'}">${money(res.total_aplicado)}</div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4"><div class="detail-panel"><dl>`;
+            [['Proveedor',ord.nombre],['CUIT',ord.cuit],['Fecha',ord.fecha],['Venc',ord.fechaven],
+             ['Pago',ord.pago_nombre||ord.pago],['Moneda',ord.moneda],['Estado',ord.estadoreg],
+             ['Nota',ord.nota]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+            h+=`</dl></div></div>
+              <div class="col-md-8"><h6 class="mb-2">Facturas / Documentos Aplicados (${imps.length})</h6>`;
+            if (imps.length > 0) {
+              h += buildTable([
+                {key:'tipo_factura',label:'Tipo'},
+                {key:'comp_factura',label:'Factura Nro'},
+                {key:'importe_aplicado',label:'Aplicado',render:v=>`<strong>${money(v)}</strong>`},
+                {key:'detalle',label:'Detalle',render:v=>esc(v||'')},
+                {key:'recibo_origen',label:'Recibo'},
+                {key:'factura',label:'Total Factura',render:v=>v?money(v.total):'<em class="text-muted">N/D</em>'},
+                {key:'factura',label:'Fecha Fac.',render:v=>v?esc(v.fecha):''},
+                {key:'factura',label:'Cliente',render:v=>v?esc(v.cliente):''}
+              ], imps);
+            } else {
+              h += '<div class="alert alert-info">Sin imputaciones registradas en proimpu para esta orden de pago</div>';
+            }
+            h += `</div></div></div></div>`;
+            r.innerHTML = h;
+          } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+        renderCT();
+      },
+      maestros: () => {
+        const tabs = [
+          {id:'clientes',label:'Clientes',ep:'maestros/clientes',cols:epCols('maestros/clientes'),detail:true},
+          {id:'proveedores',label:'Proveedores',ep:'maestros/proveedores',cols:epCols('maestros/proveedores'),detail:true},
+          {id:'plancuentas',label:'Plan de Cuentas',ep:'maestros/plancuentas',cols:epCols('maestros/plancuentas'),detail:true}
+        ];
+        let curTab = tabs[0];
+        function renderM() {
+          let h = `<div class="module-header"><h4><i class="bi bi-bookmark-star"></i>Maestros</h4></div>
+            <ul class="nav nav-tabs mb-3" id="mTabs">`;
+          tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${i}">${t.label}</a></li>`; });
+          h+=`</ul>
+            <div class="row g-2 mb-3 align-items-center">
+              <div class="col-md-4"><div class="input-group input-group-sm">
+                <input type="text" class="form-control" id="mS" placeholder="Buscar...">
+                <button class="btn btn-primary" onclick="loadMTab()"><i class="bi bi-search"></i></button>
+                <button class="btn btn-outline-secondary" onclick="clearM()"><i class="bi bi-x-lg"></i></button></div></div>
+              <div class="col-md-2"><select class="form-select form-select-sm" id="mLim"><option value="100">100</option><option value="500" selected>500</option></select></div>
+            </div>
+            <div id="mR"></div>`;
+          $('app-content').innerHTML = h;
+          document.querySelectorAll('#mTabs .nav-link').forEach(a => {
+            a.addEventListener('click', e => {
+              e.preventDefault();
+              document.querySelectorAll('#mTabs .nav-link').forEach(l=>l.classList.remove('active'));
+              a.classList.add('active');
+              curTab = tabs[parseInt(a.dataset.tab)];
+              loadMTab();
+            });
+          });
+          loadMTab();
+        }
+        window.loadMTab = async () => {
+          if (!curTab) return;
+          const r = $('mR'); if (!r) return;
+          r.innerHTML = renderLoading();
+          const p = new URLSearchParams();
+          const s = $('mS')?.value; if (s) p.set('search', s);
+          p.set('limit', $('mLim')?.value || '500');
+          try {
+            const d = await API.get(`/api/${curTab.ep}?${p.toString()}`);
+            r.innerHTML = `<div class="card"><div class="card-header d-flex justify-content-between">
+              <span>${curTab.label}</span><span class="text-muted small">${d.length} registros</span></div>
+              <div class="card-body p-0">${buildTable(curTab.cols, d, curTab.detail?(curTab.id==='clientes'?'clienteid':(curTab.id==='proveedores'?'proveedor':'cuentacontid')):null)}</div></div>`;
+            if (curTab.detail) {
+              const key = curTab.id==='clientes'?'clienteid':(curTab.id==='proveedores'?'proveedor':'cuentacontid');
+              document.querySelectorAll('#mR .row-click').forEach((el,i) => {
+                el.addEventListener('click', () => showMDetail(d[i][key] || d[i].codigo));
+              });
+            }
+          } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+        window.clearM = () => { const e=$('mS');if(e)e.value='';loadMTab(); };
+        window.showMDetail = async (id) => {
+          if (!id) return;
+          $('modalBody').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Cargando...</p></div>';
+          bootstrap.Modal.getOrCreateInstance('#detalleModal').show();
+          try {
+            if (curTab.id === 'clientes') {
+              const d = await API.get(`/api/maestros/clientes/${id}`);
+              const cbs = await API.get(`/api/clientes/${id}/comprobantes`);
+              $('modalTitle').innerHTML = `<i class="bi bi-person me-2"></i>${esc(d.nombre||d.cliente)}`;
+              let h = `<div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
+              [['Código',d.cliente],['Nombre',d.nombre],['Denominación',d.deno],['CUIT',d.cuit],
+               ['Domicilio',d.domicilio],['Localidad',d.localidad],['Provincia',d.provincia_nombre],
+               ['CP',d.codpos],['Email',d.email],['Teléfono',d.telefono],
+               ['Zona',d.zona_nombre],['Vendedor',d.vendedor_nombre],['Lista Prec.',d.lista],
+               ['Moneda',d.moneda],['Cond.IVA',d.taxcond],['Reg.IVA',d.regiva],
+               ['Forma Pago',d.pago_nombre],['Descuento',d.descuento?`${d.descuento}%`:''],
+               ['Crédito',money(d.credito)],['Crédito Cta.Cte.',money(d.credctacte)],
+               ['Cta.Contable (Activo)',`${d.cta_contable_codigo||''} - ${d.cta_contable_nombre||''}`],
+               ['Cta.Contable (Resultado)',`${d.cta_resultado_codigo||''} - ${d.cta_resultado_nombre||''}`],
+               ['Estado',d.estado],['Ingreso',d.fechaing]
+              ].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+              h+=`</dl></div></div><div class="col-md-6"><h6 class="mb-2">Últimos Comprobantes</h6>`;
+              h+=buildTable([{key:'comp',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'codigo',label:'Tipo'},{key:'neto',label:'Neto',render:money},{key:'iva',label:'IVA',render:money},{key:'total',label:'Total',render:money},{key:'estadodoc',label:'Estado'}],cbs);
+              h+=`</div></div>`;
+              $('modalBody').innerHTML = h;
+            } else if (curTab.id === 'proveedores') {
+              const d = await API.get(`/api/maestros/proveedores/${id}`);
+              $('modalTitle').innerHTML = `<i class="bi bi-truck me-2"></i>${esc(d.nombre||d.proveedor)}`;
+              let h = `<div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
+              [['Código',d.proveedor],['Nombre',d.nombre],['Denominación',d.deno],['CUIT',d.cuit],
+               ['Domicilio',d.domicilio],['Localidad',d.localidad],['Provincia',d.provincia_nombre],
+               ['CP',d.codpos],['Teléfono',d.telefono],
+               ['Cond.IVA',d.ivare],['Tax Cond',d.taxcond],['Moneda',d.moneda],
+               ['Forma Pago',d.pago_nombre],['Saldo',money(d.saldo)],
+               ['Cta.Pasivo',`${d.cta_pasivo_codigo||''} - ${d.cta_pasivo_nombre||''}`],
+               ['Estado',d.estado],['Fecha Alta',d.fecha]
+              ].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+              h+=`</dl></div></div></div>`;
+              $('modalBody').innerHTML = h;
+            } else if (curTab.id === 'plancuentas') {
+              const d = await API.get(`/api/contabilidad/cuentas`);
+              const cta = d.find(c => c.cuentacontid === id || c.codigo === id);
+              if (cta) {
+                const hijas = d.filter(c => c.agrupa === cta.codigo);
+                $('modalTitle').innerHTML = `<i class="bi bi-journal me-2"></i>${esc(cta.codigo)} - ${esc(cta.nombre)}`;
+                let h = `<div class="row"><div class="col-md-4"><div class="detail-panel"><dl>`;
+                [['Código',cta.codigo],['Nombre',cta.nombre],['Imputable',cta.imputable],
+                 ['Agrupa',cta.agrupa],['Nivel',cta.nivel],['C.Costo',cta.cencos],
+                 ['Unid.Negocio',cta.unidnego],['Presupuestario',cta.presupuestario],
+                 ['Ajuste x Inf.',cta.ajustaxinf],['Refunde',cta.refunde]
+                ].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+                h+=`</dl></div></div><div class="col-md-8"><h6 class="mb-2">Cuenta Superior: ${esc(cta.agrupa_nombre||cta.agrupa||'(ninguna)')}</h6>`;
+                if (hijas.length > 0) {
+                  h+=`<h6 class="mb-2">Cuentas Hijas (${hijas.length})</h6>`;
+                  h+=buildTable([{key:'codigo',label:'Código'},{key:'nombre',label:'Nombre'},{key:'imputable',label:'Imputable'},{key:'nivel',label:'Nivel'},{key:'cencos',label:'C.Costo'}],hijas);
+                } else {
+                  h+=`<div class="alert alert-info">Esta cuenta no tiene cuentas hijas</div>`;
+                }
+                h+=`</div></div>`;
+                $('modalBody').innerHTML = h;
+              } else {
+                $('modalBody').innerHTML = `<div class="alert alert-warning mb-0">Cuenta no encontrada</div>`;
+              }
+            }
+          } catch(e) { $('modalBody').innerHTML = `<div class="alert alert-danger mb-0">${e.error||e.message}</div>`; }
+        };
+        renderM();
+      },
+
+      ctacte: () => {
+        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-wallet2"></i>Cuenta Corriente - Clientes</h4></div>
+          <div class="row g-2 mb-3 align-items-center">
+            <div class="col-md-4"><div class="input-group input-group-sm">
+              <input type="text" class="form-control" id="ctaSearch" placeholder="Buscar cliente...">
+              <button class="btn btn-primary" onclick="loadCtaResumen()"><i class="bi bi-search"></i></button>
+              <button class="btn btn-outline-secondary" onclick="clearCta()"><i class="bi bi-x-lg"></i></button></div></div>
+          </div>
+          <div id="ctaContent"></div>`;
+        window.loadCtaResumen = async () => {
+          const c = $('ctaContent'); if (!c) return;
+          c.innerHTML = renderLoading();
+          const s = $('ctaSearch')?.value || '';
+          try {
+            const d = await API.get(`/api/ctacte/resumen?search=${encodeURIComponent(s)}`);
+            let h = buildTable([
+              {key:'cliente',label:'Cód'},{key:'nombre',label:'Cliente'},
+              {key:'cuit',label:'CUIT'},{key:'debe_total',label:'Debe',render:money},
+              {key:'haber_total',label:'Haber',render:money},
+              {key:'saldo_actual',label:'Saldo',render:v=>`<span class="${v<0?'text-success':'text-danger'} fw-bold">${money(v)}</span>`},
+              {key:'vencido',label:'Vencido',render:v=>`<span class="text-danger">${money(v)}</span>`},
+              {key:'credito',label:'Límite',render:money},{key:'ultimo_mov',label:'Últ.Mov'}
+            ], d);
+            h += `<p class="text-muted small px-3">Click en un cliente para ver detalle completo de movimientos</p>`;
+            c.innerHTML = h;
+            document.querySelectorAll('#ctaContent .row-click').forEach((el, i) => {
+              el.addEventListener('click', () => showCtaDetalle(d[i].clienteid));
+            });
+          } catch(e) { c.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+        window.showCtaDetalle = async (clienteid) => {
+          const c = $('ctaContent'); if (!c) return;
+          c.innerHTML = renderLoading();
+          try {
+            const [cli, r] = await Promise.all([
+              API.get(`/api/maestros/clientes/${clienteid}`).catch(() => null),
+              API.get(`/api/ctacte/detalle/${clienteid}`)
+            ]);
+            const nomCli = cli ? `${cli.cliente} - ${cli.nombre}` : clienteid;
+            const cte = r.rows || [];
+            const tot = r.totals || {};
+            let h = `<div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-person me-2"></i><strong>${esc(nomCli)}</strong></span>
+              <button class="btn btn-sm btn-outline-secondary" onclick="loadCtaResumen()"><i class="bi bi-arrow-left"></i> Volver</button></div>
+              <div class="card-body"><div class="row text-center">
+                <div class="col-3"><small class="text-muted">Debe</small><div class="fw-bold text-danger">${money(tot.total_debe)}</div></div>
+                <div class="col-3"><small class="text-muted">Haber</small><div class="fw-bold text-success">${money(tot.total_haber)}</div></div>
+                <div class="col-3"><small class="text-muted">Saldo</small><div class="fw-bold ${tot.saldo_final<0?'text-success':'text-danger'}">${money(tot.saldo_final)}</div></div>
+                <div class="col-3"><small class="text-muted">Vencido</small><div class="fw-bold text-danger">${money(tot.vencido)}</div></div>
+              </div></div></div>
+              <div class="card"><div class="card-header">Movimientos (${tot.cantidad})</div><div class="card-body p-0">`;
+            h += buildTable([
+              {key:'fecha',label:'Fecha'},{key:'codigo',label:'Tipo'},{key:'comp',label:'Comp'},
+              {key:'debe',label:'Debe',render:v=>v?money(v):''},
+              {key:'haber',label:'Haber',render:v=>v?money(v):''},
+              {key:'saldo_parcial',label:'Saldo',render:v=>`<span class="${v<0?'text-success':'text-danger'} fw-bold">${money(v)}</span>`},
+              {key:'fechaven',label:'Venc'},{key:'tipo_nombre',label:'Concepto'}
+            ], cte);
+            h += `</div></div>`;
+            c.innerHTML = h;
+          } catch(e) { c.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+        loadCtaResumen();
+      },
+      contabilidad: async () => {
+        $('app-content').innerHTML = renderLoading();
+        try {
+          const[cuentas,plan,asientos]=await Promise.all([API.get('/api/contabilidad/cuentas'),API.get('/api/contabilidad/plancuentas'),API.get('/api/contabilidad/asientos?limit=100')]);
+          $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-journal"></i>Contabilidad</h4></div>
+            <ul class="nav nav-tabs mb-3" id="ctabs">
+              <li class="nav-item"><a class="nav-link active" href="#" data-tab="asi">Asientos</a></li>
+              <li class="nav-item"><a class="nav-link" href="#" data-tab="cta">Cuentas</a></li>
+              <li class="nav-item"><a class="nav-link" href="#" data-tab="plan">Plan de Cuentas</a></li>
+            </ul><div id="ctabc">${buildTable([{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'dato',label:'Cuenta'},{key:'leyenda',label:'Leyenda'},{key:'importe',label:'Importe',render:money},{key:'tipo',label:'Tipo'},{key:'modulo',label:'Módulo'}],asientos)}</div>`;
+          document.querySelectorAll('#ctabs .nav-link').forEach(a=>{
+            a.addEventListener('click',e=>{
+              e.preventDefault(); document.querySelectorAll('#ctabs .nav-link').forEach(l=>l.classList.remove('active')); a.classList.add('active');
+              const t=a.dataset.tab;
+              if(t==='asi')$('ctabc').innerHTML=buildTable([{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'dato',label:'Cuenta'},{key:'leyenda',label:'Leyenda'},{key:'importe',label:'Importe',render:money},{key:'tipo',label:'Tipo'},{key:'modulo',label:'Módulo'}],asientos);
+              else if(t==='cta')$('ctabc').innerHTML=buildTable([{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'imputable',label:'Imputable'},{key:'agrupa',label:'Agrupa'},{key:'cencos',label:'C.Costo'},{key:'nivel',label:'Nivel'}],cuentas);
+              else if(t==='plan')$('ctabc').innerHTML=buildTable([{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'referencia',label:'Ref'},{key:'tipoplanid',label:'Tipo'},{key:'tiposaldo',label:'Saldo'},{key:'presupuestario',label:'Presup'}],plan);
+            });
+          });
+        } catch(e){$('app-content').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+      },
+      impuestos: () => {
+        const tabs = [
+          {id:'percepciones',label:'Percep. Config'},{id:'retenciones',label:'Ret. Config'},
+          {id:'tramosiva',label:'Tramos IVA'},{id:'tramosretencion',label:'Tramos Retención'},
+          {id:'ivare',label:'Cond. IVA'},{id:'regiva',label:'Reg. IVA'},
+          {id:'taxs',label:'Impuestos'},{id:'alicuotas',label:'Alicuotas'},
+          {id:'logafip',label:'Log AFIP'},{id:'padronbsas',label:'Padrón BSAS'}
+        ];
+        const epMap = {
+          percepciones:'impuestos/percepciones',retenciones:'impuestos/retenciones',
+          tramosiva:'impuestos/tramosiva',tramosretencion:'impuestos/tramosretencion',
+          ivare:'impuestos/ivare',regiva:'impuestos/regiva',
+          taxs:'impuestos/taxs',alicuotas:'impuestos/alicuotas',
+          logafip:'impuestos/logafip',padronbsas:'impuestos/padronbsas'
+        };
+        renderTabs(tabs,'percepciones',tid=>tabContent(epMap,tid,'Impuestos'));
+      },
+      obras: () => {
+        const tabs = [{id:'licitaciones',label:'Licitaciones'},{id:'polizas',label:'Pólizas'},{id:'obras',label:'Obras'}];
+        const epMap = {licitaciones:'obras/licitaciones',polizas:'obras/polizas',obras:'obras/listado'};
+        const colsMap = {licitaciones:epCols('obras/licitaciones'),polizas:epCols('obras/polizas'),obras:[{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'direccion',label:'Dirección'},{key:'localidad',label:'Localidad'}]};
+        renderTabs(tabs,'licitaciones',tid=>tabContent(epMap,tid,'Obras y Licitaciones'));
+      },
+      activosfijos: () => {
+        const tabs = [{id:'bienes',label:'Bienes'},{id:'clases',label:'Clases'},{id:'metodos',label:'Mét.Amort'},{id:'mantenimiento',label:'Mantenimiento'}];
+        const epMap = {bienes:'activosfijos/bienes',clases:'activosfijos/clases',metodos:'activosfijos/metodosamort',mantenimiento:'activosfijos/mantenimiento'};
+        renderTabs(tabs,'bienes',tid=>tabContent(epMap,tid,'Activos Fijos'));
+      },
+      ecommerce: () => {
+        const tabs = [{id:'productos',label:'Productos'},{id:'categorias',label:'Categorías'},{id:'tipos',label:'Tipos'},{id:'combos',label:'Combos'},{id:'mlcats',label:'ML Categorías'}];
+        const epMap = {productos:'ecommerce/productos',categorias:'ecommerce/categorias',tipos:'ecommerce/tipos',combos:'ecommerce/combos',mlcats:'ecommerce/mlcategories'};
+        renderTabs(tabs,'productos',tid=>tabContent(epMap,tid,'E-Commerce'));
+      },
+      crm: () => {
+        const tabs = [{id:'incidentes',label:'Incidentes'},{id:'novedades',label:'Novedades'},{id:'seguimiento',label:'Seguimiento'},{id:'circuitos',label:'Circuitos'},{id:'etapas',label:'Etapas'},{id:'proyectos',label:'CRM Proyectos'}];
+        const epMap = {incidentes:'crm/incidentes',novedades:'crm/novedades',seguimiento:'crm/seguimiento',circuitos:'crm/circuitos',etapas:'crm/etapas',proyectos:'crm/crmproyectos'};
+        renderTabs(tabs,'incidentes',tid=>tabContent(epMap,tid,'CRM / Incidentes'));
+      },
+      geografia: async () => {
+        $('app-content').innerHTML = renderLoading();
+        try {
+          const[paises,provincias]=await Promise.all([API.get('/api/geografia/paises'),API.get('/api/geografia/provincias')]);
+          $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-geo-alt"></i>Geografía</h4></div>
+            <div class="row"><div class="col-md-6"><div class="card"><div class="card-header">Países</div><div class="card-body p-0">${buildTable([{key:'id',label:'Cód'},{key:'nombre',label:'Nombre'}],paises)}</div></div></div>
+            <div class="col-md-6"><div class="card"><div class="card-header">Provincias</div><div class="card-body p-0">${buildTable([{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'pais_nombre',label:'País'},{key:'cod_arca',label:'ARCA'}],provincias)}</div></div></div></div>
+            <div class="card"><div class="card-header">Localidades</div><div class="card-body"><div class="input-group input-group-sm mb-2" style="max-width:350px">
+              <input type="text" class="form-control" id="locS" placeholder="Buscar localidad...">
+              <button class="btn btn-primary" onclick="loadLocs()"><i class="bi bi-search"></i></button></div><div id="locR"></div></div></div>`;
+          window.loadLocs = async () => {
+            const s=$('locS')?.value||''; $('locR').innerHTML=renderLoading();
+            try{const d=await API.get(`/api/geografia/localidades?search=${encodeURIComponent(s)}`);$('locR').innerHTML=buildTable([{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'prov_nombre',label:'Provincia'}],d);}catch(e){$('locR').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+          }; window.loadLocs();
+        } catch(e){$('app-content').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+      },
+      schema: async () => {
+        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-database"></i>Explorador de Base de Datos</h4></div>
+          <div class="input-group input-group-sm mb-3" style="max-width:400px">
+            <input type="text" class="form-control" id="schemaS" placeholder="Buscar tabla...">
+            <button class="btn btn-primary" onclick="loadSchema()"><i class="bi bi-search"></i></button>
+          </div>
+          <div id="schemaContent"><div class="loading"><div class="spinner-border text-primary"></div></div></div>`;
+        window.loadSchema = async () => {
+          const s=$('schemaS')?.value||'';
+          $('schemaContent').innerHTML=renderLoading();
+          try {
+            const d=await API.get(`/api/schema/tables?search=${encodeURIComponent(s)}`);
+            let h=`<div class="card"><div class="card-header">${d.length} tablas encontradas (de ${d[0]?.total||823})</div><div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr><th>Tabla</th><th></th></tr></thead><tbody>`;
+            d.forEach(t=>{h+=`<tr class="schema-table-row" onclick="describeTable('${t.tablename}')"><td><i class="bi bi-table me-2"></i>${t.tablename}</td><td class="text-end"><span class="badge bg-secondary">ver</span></td></tr>`;});
+            h+=`</tbody></table></div></div></div><div id="tableDetail"></div>`;
+            $('schemaContent').innerHTML=h;
+          } catch(e){$('schemaContent').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+        };
+        window.describeTable = async (name) => {
+          $('tableDetail').innerHTML=renderLoading();
+          try {
+            const info=await API.get(`/api/schema/tables/${name}`);
+            const data=await API.get(`/api/schema/tables/${name}/data?limit=20`);
+            let h=`<div class="card mt-3"><div class="card-header">${name} (${info.totalRecords} registros) <span class="badge bg-info ms-2">PK: ${info.primaryKey.join(', ')}</span></div>
+              <div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr><th>Columna</th><th>Tipo</th><th>Nulo</th><th>Default</th></tr></thead><tbody>`;
+            info.columns.forEach(c=>{h+=`<tr><td>${c.column_name}${info.primaryKey.includes(c.column_name)?' <span class="badge bg-warning">PK</span>':''}</td><td>${c.data_type}${c.character_maximum_length?`(${c.character_maximum_length})`:''}</td><td>${c.is_nullable}</td><td>${esc(c.column_default)}</td></tr>`;});
+            h+=`</tbody></table></div></div></div>`;
+            h+=`<div class="card mt-2"><div class="card-header">Vista previa (20 registros)</div><div class="card-body p-0">`;
+            if(data.rows.length>0){
+              const cols=Object.keys(data.rows[0]).map(k=>({key:k,label:k}));
+              h+=buildTable(cols,data.rows);
+            } else h+=`<div class="p-3 text-muted">Sin datos</div>`;
+            h+=`</div></div>`;
+            $('tableDetail').innerHTML=h;
+          } catch(e){$('tableDetail').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+        };
+        window.loadSchema();
+      },
+      auxiliares: () => {
+        const tabs = [
+          {id:'lineas',label:'Líneas'},{id:'familias',label:'Familias'},{id:'grupos',label:'Grupos'},
+          {id:'marcas',label:'Marcas'},{id:'monedas',label:'Monedas'},{id:'unidades',label:'Unidades'},
+          {id:'vendedores',label:'Vendedores'},{id:'cobradores',label:'Cobradores'},
+          {id:'motivos',label:'Motivos'},{id:'motivosstock',label:'Mot. Stock'},
+          {id:'categoriasstock',label:'Cat. Stock'},{id:'condicionesiva',label:'Cond.IVA'},
+          {id:'cajas',label:'Cajas'},{id:'tipocomprobantes',label:'Tipo Comp.'}
+        ];
+        const epMap = {
+          lineas:'auxiliares/lineas',familias:'auxiliares/familias',grupos:'auxiliares/grupos',
+          marcas:'auxiliares/marcas',monedas:'auxiliares/monedas',unidades:'auxiliares/unidades',
+          vendedores:'auxiliares/vendedores',cobradores:'auxiliares/cobradores',
+          motivos:'auxiliares/motivos',motivosstock:'auxiliares/motivosstock',
+          categoriasstock:'auxiliares/categoriasstock',condicionesiva:'auxiliares/condicionesiva',
+          cajas:'auxiliares/cajas',tipocomprobantes:'auxiliares/tipocomprobantes'
+        };
+        const simpleCols = [{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'}];
+        const colsMap = {
+          vendedores:[{key:'vendedor',label:'Cód'},{key:'nom_ven',label:'Nombre'},{key:'comision',label:'Comisión'},{key:'area',label:'Area'}],
+          cobradores:[{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'}],
+          monedas:[{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'simbolo',label:'Sím'}],
+          unidades:[{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'}],
+          cajas:[{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'}],
+          tipocomprobantes:[{key:'codigo',label:'Cód'},{key:'descripcion',label:'Descripción'},{key:'clasedoc',label:'Clase'},{key:'coddoc',label:'CódDoc'}],
+          condicionesiva:[{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'}],
+        };
+        renderTabs(tabs,'lineas',tid=>tabContent(epMap,tid,'Tablas Auxiliares'));
+      },
+    };
+
+    function renderAllModules() {
+      Object.values(MODULE_FUNCS).forEach(fn=>{
+        try { fn(); } catch(e){}
+      });
+    }
+
+    const DETAIL_FUNCS = {
+      clientes: async (id) => {
+        $('d').innerHTML=renderLoading();
+        try {
+          const d=await API.get(`/api/clientes/${id}`);
+          const cbs=await API.get(`/api/clientes/${id}/comprobantes`);
+          let h=`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><span>Cliente: ${d.cliente} - ${d.nombre}</span><button class="btn btn-sm btn-outline-secondary" onclick="$('d').innerHTML=''"><i class="bi bi-x-lg"></i></button></div><div class="card-body"><div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
+          [['Cliente',d.cliente],['Nombre',d.nombre],['Denominación',d.deno],['CUIT',d.cuit],
+           ['Domicilio',d.domicilio],['Localidad',d.localidad],['Provincia',d.provnom],['CP',d.codpos],
+           ['Email',d.email],['Teléfono',d.telefono],['Vendedor',d.vendedor],['Lista',d.lista],
+           ['Moneda',d.moneda],['Crédito',money(d.credito)],['Cond.IVA',d.taxcond]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+          h+=`</dl></div></div><div class="col-md-6"><h6 class="mb-2">Últimos Comprobantes</h6>`;
+          h+=buildTable([{key:'comp',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'tipocomprobante',label:'Tipo'},{key:'neto',label:'Neto',render:money},{key:'iva',label:'IVA',render:money}],cbs.slice(0,30));
+          h+=`</div></div></div></div>`;
+          $('d').innerHTML=h;
+        } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+      },
+      comprobantes: async (id) => {
+        $('d').innerHTML=renderLoading();
+        try {
+          const d=await API.get(`/api/comprobantes/${id}`);
+          let h=`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><span>Comprobante: ${d.comp}</span><button class="btn btn-sm btn-outline-secondary" onclick="$('d').innerHTML=''"><i class="bi bi-x-lg"></i></button></div><div class="card-body"><div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
+          [['Nro',d.comp],['Tipo',d.tipocomprobante],['Fecha',d.fecha],['Vencimiento',d.fechaven],
+           ['Cliente',d.nombre],['CUIT',d.cuit],['Neto',money(d.neto)],['IVA',money(d.iva)],
+           ['Total',money(d.total)],['Estado',d.estadodoc],['Vendedor',d.vendedor]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+          h+=`</dl></div></div><div class="col-md-6"><div class="detail-panel"><dl>`;
+          [['Observaciones',d.obs],['CAE',d.campocae],['Fec.CAE',d.campofechacae],['MoviID',d.moviid],
+           ['Moneda',d.moneda],['COTIZACION',d.cotizacionid]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+          h+=`</dl></div></div></div></div></div>`;
+          $('d').innerHTML=h;
+        } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+      },
+      stock: async (id) => {
+        $('d').innerHTML=renderLoading();
+        try {
+          const d=await API.get(`/api/stock/${id}`);
+          const movs=await API.get(`/api/stock/${id}/movimientos`);
+          const stk=await API.get(`/api/stock/${id}/stock`);
+          let h=`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><span>Producto: ${d.clave} - ${d.detalle}</span><button class="btn btn-sm btn-outline-secondary" onclick="$('d').innerHTML=''"><i class="bi bi-x-lg"></i></button></div><div class="card-body"><div class="row"><div class="col-md-4"><div class="detail-panel"><dl>`;
+          [['Código',d.clave],['Descripción',d.detalle],['Rubro',d.rubro_nombre],['Línea',d.linea_nombre],
+          ['Familia',d.familia_nombre],['Grupo',d.grupo_nombre],['Unidad',d.unidad],['Cód.Barra',d.codbar],
+           ['Precio Vta',money(d.precio)],['Precio Compra',money(d.preciopro)],['IVA',d.iva],
+           ['Stock Mín',d.lotemin]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+          h+=`</dl></div></div><div class="col-md-4"><h6 class="mb-2">Stock x Depósito</h6>`;
+          h+=buildTable([{key:'depositoid',label:'Depósito'},{key:'cantidad',label:'Cant',render:v=>Number(v||0).toFixed(2)},{key:'costo',label:'Costo',render:money}],stk);
+          h+=`</div><div class="col-md-4"><h6 class="mb-2">Últimos Movimientos</h6>`;
+          h+=buildTable([{key:'fecha',label:'Fecha'},{key:'remito',label:'Remito'},{key:'tipomov',label:'Tipo'},{key:'cantidad',label:'Cant',render:v=>Number(v||0).toFixed(2)}],movs.slice(0,20));
+          h+=`</div></div></div></div>`;
+          $('d').innerHTML=h;
+        } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+      },
+      proveedores: async (id) => {
+        $('d').innerHTML=renderLoading();
+        try {
+          const d=await API.get(`/api/proveedores/${id}`);
+          let h=`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><span>Proveedor: ${d.proveedor} - ${d.nombre}</span><button class="btn btn-sm btn-outline-secondary" onclick="$('d').innerHTML=''"><i class="bi bi-x-lg"></i></button></div><div class="card-body"><div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
+          [['Proveedor',d.proveedor],['Nombre',d.nombre],['Denominación',d.deno],['CUIT',d.cuit],
+           ['Domicilio',d.domicilio],['Localidad',d.localidad],['Provincia',d.provincia],
+           ['Teléfono',d.telefono],['Cond.IVA',d.ivare],['Moneda',d.moneda],['Saldo',money(d.saldo)]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+          h+=`</dl></div></div></div></div></div>`;
+          $('d').innerHTML=h;
+        } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+      },
+      ventas: async (id) => {
+        $('modalBody').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Cargando...</p></div>';
+        const modal = new bootstrap.Modal('#detalleModal');
+        modal.show();
+        try {
+          const [cab, det] = await Promise.all([
+            API.get(`/api/ventas/${id}`),
+            API.get(`/api/ventas/${id}/detalle`)
+          ]);
+          let netoH = parseFloat(cab.neto)||0;
+          let ivaH = parseFloat(cab.iva)||0;
+          let exentoH = parseFloat(cab.exento)||0;
+          let percepcionH = parseFloat(cab.percepcion)||0;
+          let totalReal = netoH + exentoH + percepcionH;
+          $('modalTitle').innerHTML = `<i class="bi bi-receipt me-2"></i>Factura: ${cab.comp} - ${esc(cab.nombre||cab.cliente)}`;
+          let h = `<div class="row"><div class="col-md-5"><div class="detail-panel"><dl>`;
+          [['Nro',cab.comp],['Tipo',cab.codigo],['Fecha',cab.fecha],['Vencimiento',cab.fechaven],
+           ['Cliente',cab.nombre],['CUIT',cab.cuit],['Vendedor',cab.vendedor_nombre||cab.vendedor],
+           ['Forma Pago',cab.pago_nombre||cab.pago],['Moneda',cab.moneda],['Remito',cab.remito],
+           ['CAE',cab.cae||cab.campocae],
+           ['Subtotal (renglones)',money(netoH-ivaH-(cab.impuestoaux1||0)-(cab.impuestoaux2||0)-(cab.impuestoaux3||0))],['IVA',money(ivaH)],
+           ((cab.impuestoaux1||0)!=0?['Imp.Aux.1',money(cab.impuestoaux1)]:null),
+           ((cab.impuestoaux2||0)!=0?['Imp.Aux.2',money(cab.impuestoaux2)]:null),
+           ((cab.impuestoaux3||0)!=0?['Imp.Aux.3',money(cab.impuestoaux3)]:null),
+           ['Neto (según TANGO)',money(netoH)],
+           (exentoH?['Exento',money(exentoH)]:null),(percepcionH?['Percepción',money(percepcionH)]:null),
+           ['Total',money(totalReal)],['Estado',cab.estadodoc]].filter(Boolean).forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+          h+=`</dl></div></div><div class="col-md-7"><h6 class="mb-2">Renglones (${det.length})</h6>`;
+          if (det.length > 0) {
+            let sumaDet = det.reduce((s,r) => s + (parseFloat(r.subtotal)||0), 0);
+            let ivaH = parseFloat(cab.iva)||0;
+            let aux1 = parseFloat(cab.impuestoaux1)||0;
+            let aux2 = parseFloat(cab.impuestoaux2)||0;
+            let aux3 = parseFloat(cab.impuestoaux3)||0;
+            let netoH = parseFloat(cab.neto)||0;
+            let reconciling = Math.abs(netoH - (sumaDet + ivaH + aux1 + aux2 + aux3));
+            h += `<div class="alert alert-info py-2 small mb-2">
+              <strong>L&oacute;gica de TANGO:</strong> El campo <code>neto</code> del comprobante =
+              Suma de renglones + IVA + Imp.Aux.1+2+3<br>
+              <code>${money(sumaDet)} + ${money(ivaH)}${aux1?' + '+money(aux1):''}${aux2?' + '+money(aux2):''}${aux3?' + '+money(aux3):''}
+              = ${money(sumaDet+ivaH+aux1+aux2+aux3)}</code>
+              ${reconciling < 1 ? ' ✅ <strong>Coincide con el neto del comprobante</strong>' : ' ⚠️ Diferencia: '+money(reconciling)}
+            </div>`;
+            h += buildTable([
+              {key:'clave',label:'Cód'},{key:'art_detalle',label:'Artículo'},
+              {key:'cantidad',label:'Cant',render:v=>Number(v||0).toFixed(2)},
+              {key:'precio_unitario',label:'P.Unit',render:money},
+              {key:'subtotal',label:'Subtotal',render:money},
+              {key:'descuento',label:'Desc.%',render:v=>v?`${v}%`:''},
+              {key:'iva',label:'IVA%',render:v=>v?`${v}%`:''}
+            ], det);
+          } else {
+            h += '<div class="alert alert-info">Sin detalle de renglones</div>';
+          }
+          h += `</div></div>`;
+          $('modalBody').innerHTML = h;
+        } catch(e){
+          $('modalBody').innerHTML = `<div class="alert alert-danger mb-0">${e.error||e.message}</div>`;
+        }
+      },
+    };
+
+    buildSidebar();
+    loadModule('dashboard');
+  </script>
+
+  <div class="modal fade" id="detalleModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header py-2">
+          <h6 class="modal-title" id="modalTitle"><i class="bi bi-file-text me-2"></i>Detalle</h6>
+          <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-3" id="modalBody"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

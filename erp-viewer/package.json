@@ -1,0 +1,15 @@
+{
+  "name": "erp-viewer",
+  "version": "1.0.0",
+  "description": "Visualizador de base de datos ERP TANGO Gestión",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.21.0",
+    "pg": "^8.13.0"
+  }
+}
