@@ -17,4 +17,4 @@ services:
 
 networks:
   proxy-net:
-    external: false
+    name: proxy-net
