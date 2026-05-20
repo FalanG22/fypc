@@ -1,14 +1,13 @@
 version: '3.8'
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-b1618Awj}
       POSTGRES_DB: fypc
     volumes:
-      - pgdata_v2:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d
+      - /var/lib/docker/pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
       - erp-net
@@ -27,9 +26,6 @@ services:
     networks:
       - erp-net
       - proxy-net
-
-volumes:
-  pgdata_v2:
 
 networks:
   erp-net:
