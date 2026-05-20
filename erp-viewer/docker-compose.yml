@@ -26,24 +26,12 @@ services:
     restart: unless-stopped
     networks:
       - erp-net
-
-  proxy:
-    build: ./nginx
-    ports:
-      - "${HTTP_PORT:-8080}:80"
-      - "${HTTPS_PORT:-8443}:443"
-    environment:
-      DOMAIN: ${DOMAIN:-localhost}
-    volumes:
-      - ./nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - app
-    restart: unless-stopped
-    networks:
-      - erp-net
+      - proxy-net
 
 volumes:
   pgdata:
 
 networks:
   erp-net:
+  proxy-net:
+    external: true

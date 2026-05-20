@@ -1,7 +1,8 @@
 node_modules/
 erp-viewer/sql/*.dump
 erp-viewer/sql/*.backup
-erp-viewer/nginx/ssl/*.pem
-erp-viewer/nginx/ssl/*.key
-erp-viewer/nginx/ssl/*.crt
-!erp-viewer/nginx/ssl/.gitkeep
+erp-viewer/sql/init.sql
+proxy/ssl/*.pem
+proxy/ssl/*.key
+proxy/ssl/*.crt
+!proxy/ssl/.gitkeep

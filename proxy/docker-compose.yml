@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  nginx:
+    build: .
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SENDASOFT_DOMAIN: ${SENDASOFT_DOMAIN:-sendasoft.local}
+      ERP_DOMAIN: ${ERP_DOMAIN:-erp.local}
+    volumes:
+      - ./ssl:/etc/nginx/ssl
+    restart: unless-stopped
+    networks:
+      - proxy-net
+
+networks:
+  proxy-net:
+    external: false
