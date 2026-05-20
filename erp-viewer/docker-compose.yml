@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-b1618Awj}
       POSTGRES_DB: fypc
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_v2:/var/lib/postgresql/data
       - ./sql:/docker-entrypoint-initdb.d
     restart: unless-stopped
     networks:
@@ -29,7 +29,7 @@ services:
       - proxy-net
 
 volumes:
-  pgdata:
+  pgdata_v2:
 
 networks:
   erp-net:
