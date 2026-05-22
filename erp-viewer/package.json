@@ -1,7 +1,7 @@
 {
   "name": "erp-viewer",
   "version": "1.0.0",
-  "description": "Visualizador de base de datos ERP TANGO Gestión",
+  "description": "Visualizador de base de datos ERP FYPC",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
