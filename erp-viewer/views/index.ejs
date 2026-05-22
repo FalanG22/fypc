@@ -82,7 +82,14 @@
     .form-control-sm, .form-select-sm { font-size: .78rem; }
     .login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background: url('/fypc.png') center/cover no-repeat fixed; position:relative; }
     .login-screen::before { content:''; position:absolute; inset:0; background: rgba(0,0,0,.55); }
-    .login-box { position:relative; background:rgba(255,255,255,.95); backdrop-filter:blur(12px); padding:44px; border-radius:16px; width:380px; box-shadow: 0 25px 60px rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.15); }
+    .login-box { position:relative; background:rgba(255,255,255,.12); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); padding:44px; border-radius:20px; width:380px; box-shadow: 0 25px 60px rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.2); color:#fff; }
+    .login-box input { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff; }
+    .login-box input:focus { background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.4); color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,.1); }
+    .login-box input::placeholder { color:rgba(255,255,255,.5); }
+    .login-box .text-muted { color:rgba(255,255,255,.6) !important; }
+    .login-box .btn-primary { background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.3); backdrop-filter:blur(4px); }
+    .login-box .btn-primary:hover { background:rgba(255,255,255,.3); border-color:rgba(255,255,255,.5); }
+    .login-box .text-danger { color:#fca5a5 !important; }
     .chart-card { background: #fff; border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 20px; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     .ani-fade { animation: fadeUp .4s ease both; }
@@ -92,8 +99,8 @@
   <div id="login-screen" class="login-screen">
     <div class="login-box">
       <div style="text-align:center;margin-bottom:24px">
-        <i class="bi bi-shield-lock" style="font-size:2.5rem;color:#3498db"></i>
-        <h5 class="mt-2 mb-1 fw-bold">ERP FYPC Viewer</h5>
+        <i class="bi bi-shield-lock" style="font-size:2.5rem;color:#fff;opacity:.8"></i>
+        <h5 class="mt-2 mb-1 fw-bold" style="color:#fff">ERP FYPC Viewer</h5>
         <p class="text-muted small mb-0">Ingrese sus credenciales</p>
       </div>
       <div class="mb-3"><input type="text" class="form-control" id="login-user" placeholder="Usuario" autocomplete="off"></div>
