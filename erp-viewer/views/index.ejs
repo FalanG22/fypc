@@ -80,8 +80,9 @@
     .form-control, .form-select { font-size: .82rem; border: 1px solid #e2e8f0; border-radius: var(--radius-sm); }
     .form-control:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
     .form-control-sm, .form-select-sm { font-size: .78rem; }
-    .login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background: linear-gradient(135deg,#0f172a 0,#1e293b 50%,#0f172a 100%); }
-    .login-box { background:#fff; padding:44px; border-radius:16px; width:380px; box-shadow: 0 25px 60px rgba(0,0,0,.3); }
+    .login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background: url('/fypc.png') center/cover no-repeat fixed; position:relative; }
+    .login-screen::before { content:''; position:absolute; inset:0; background: rgba(0,0,0,.55); }
+    .login-box { position:relative; background:rgba(255,255,255,.95); backdrop-filter:blur(12px); padding:44px; border-radius:16px; width:380px; box-shadow: 0 25px 60px rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.15); }
     .chart-card { background: #fff; border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 20px; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     .ani-fade { animation: fadeUp .4s ease both; }
