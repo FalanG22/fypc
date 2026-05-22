@@ -6,3 +6,4 @@ proxy/ssl/*.pem
 proxy/ssl/*.key
 proxy/ssl/*.crt
 !proxy/ssl/.gitkeep
+proxy/.env
