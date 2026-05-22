@@ -7,53 +7,84 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%233498db'/><text x='16' y='23' text-anchor='middle' font-size='20' font-weight='bold' fill='white' font-family='Arial'>F</text></svg>">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --sidebar-bg: #0f1419;
+      --sidebar-width: 230px;
+      --accent: #3b82f6;
+      --accent-light: #60a5fa;
+      --accent-dark: #1d4ed8;
+      --text-muted: #64748b;
+      --card-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --card-hover-shadow: 0 10px 25px rgba(0,0,0,.08), 0 4px 10px rgba(0,0,0,.04);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
     * { box-sizing: border-box; }
-    body { font-size: .8rem; background: #f0f2f5; font-family: 'Segoe UI',Arial,sans-serif; }
-    .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; padding: 0; width: 230px; background: linear-gradient(180deg,#1a2332 0,#0f1520 100%); overflow-y: auto; display:flex; flex-direction:column; }
-    .sidebar::-webkit-scrollbar { width: 4px; }
-    .sidebar::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
-    .sidebar .brand { padding: 14px 16px; border-bottom: 1px solid #1f2d3d; }
-    .sidebar .brand h6 { color: #ecf0f1; font-size: .82rem; margin: 0; letter-spacing: .3px; }
-    .sidebar .brand small { color: #5d7a9a; font-size: .65rem; }
-    .sidebar .mod-group { padding: 10px 16px 2px; color: #4a6a8a; font-size: .6rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-    .sidebar .nav-link { color: #8899aa; padding: 6px 16px; font-size: .78rem; border-left: 3px solid transparent; transition: all .15s; }
-    .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,.05); border-left-color: #3498db; }
-    .sidebar .nav-link.active { color: #fff; background: rgba(52,152,219,.15); border-left-color: #3498db; }
-    .sidebar .nav-link i { margin-right: 8px; width: 16px; text-align: center; font-size: .75rem; }
-    main { margin-left: 230px; padding: 20px 24px; min-height: 100vh; }
-    .card { border: none; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 16px; }
-    .card-header { background: #fff; border-bottom: 1px solid #eef1f5; font-weight: 600; padding: 10px 18px; font-size: .82rem; border-radius: 10px 10px 0 0 !important; }
-    .stat-card { padding: 18px; text-align: center; border-radius: 10px; transition: transform .15s; }
-    .stat-card:hover { transform: translateY(-2px); }
-    .stat-card .number { font-size: 1.6rem; font-weight: 700; color: #1a2332; }
-    .stat-card .label { color: #7f8c8d; font-size: .7rem; text-transform: uppercase; letter-spacing: .5px; }
-    .stat-card i { font-size: 1.4rem; color: #3498db; margin-bottom: 6px; }
-    .table th { font-weight: 600; color: #555; font-size: .7rem; text-transform: uppercase; white-space: nowrap; background: #f8f9fa; }
-    .table td { vertical-align: middle; font-size: .76rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .table-wrap { max-height: 65vh; overflow-y: auto; border-radius: 0 0 10px 10px; }
+    body { font-size: .8rem; background: #f1f5f9; font-family: 'Inter','Segoe UI',system-ui,sans-serif; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; padding: 0; width: var(--sidebar-width); background: var(--sidebar-bg); overflow-y: auto; display:flex; flex-direction:column; }
+    .sidebar::-webkit-scrollbar { width: 3px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    .sidebar .brand { padding: 16px 18px; border-bottom: 1px solid #1e293b; }
+    .sidebar .brand h6 { color: #f1f5f9; font-size: .85rem; margin: 0; letter-spacing: .5px; font-weight: 700; }
+    .sidebar .brand h6 i { color: var(--accent); }
+    .sidebar .brand small { color: #475569; font-size: .65rem; }
+    .sidebar .mod-group { padding: 14px 18px 4px; color: #334155; font-size: .6rem; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
+    .sidebar .nav-link { color: #64748b; padding: 7px 18px; font-size: .78rem; border-left: 2px solid transparent; transition: all .15s; font-weight: 450; }
+    .sidebar .nav-link:hover { color: #e2e8f0; background: rgba(255,255,255,.04); border-left-color: var(--accent); }
+    .sidebar .nav-link.active { color: #fff; background: rgba(59,130,246,.1); border-left-color: var(--accent); font-weight: 500; }
+    .sidebar .nav-link i { margin-right: 8px; width: 16px; text-align: center; font-size: .75rem; color: var(--accent); opacity: .6; }
+    .sidebar .nav-link.active i { opacity: 1; }
+    main { margin-left: var(--sidebar-width); padding: 24px 28px; min-height: 100vh; }
+    .card { border: none; border-radius: var(--radius); box-shadow: var(--card-shadow); margin-bottom: 16px; background: #fff; transition: box-shadow .2s; }
+    .card:hover { box-shadow: var(--card-hover-shadow); }
+    .card-header { background: #fff; border-bottom: 1px solid #f1f5f9; font-weight: 600; padding: 12px 20px; font-size: .82rem; border-radius: var(--radius) var(--radius) 0 0 !important; color: #1e293b; }
+    .stat-card { padding: 20px; text-align: center; border-radius: var(--radius); transition: all .25s cubic-bezier(.4,0,.2,1); position: relative; overflow: hidden; cursor: default; border: 1px solid rgba(0,0,0,.04); }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: var(--card-hover-shadow); }
+    .stat-card .number { font-size: 1.8rem; font-weight: 800; color: #0f172a; letter-spacing: -1px; line-height: 1.1; margin: 6px 0 2px; }
+    .stat-card .label { color: var(--text-muted); font-size: .68rem; text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+    .stat-card i { font-size: 1.3rem; margin-bottom: 4px; display: inline-block; }
+    .stat-card .stat-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--radius) var(--radius) 0 0; }
+    .table th { font-weight: 600; color: #475569; font-size: .68rem; text-transform: uppercase; white-space: nowrap; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 10px 12px !important; letter-spacing: .3px; }
+    .table td { vertical-align: middle; font-size: .76rem; padding: 8px 12px !important; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid #f1f5f9; }
+    .table tbody tr { transition: background .1s; }
+    .table tbody tr:last-child td { border-bottom: none; }
+    .table-wrap { max-height: 65vh; overflow-y: auto; border-radius: 0 0 var(--radius) var(--radius); }
     .table-wrap thead { position: sticky; top: 0; z-index: 2; }
     .table-wrap thead th { position: sticky; top: 0; }
-    .detail-panel { background: #f8f9fa; border-radius: 8px; padding: 14px; }
-    .detail-panel dt { font-size: .68rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: .3px; margin-top: 6px; }
-    .detail-panel dd { margin-bottom: 2px; font-size: .8rem; }
+    .detail-panel { background: #f8fafc; border-radius: var(--radius-sm); padding: 16px; border: 1px solid #e2e8f0; }
+    .detail-panel dt { font-size: .65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 8px; font-weight: 600; }
+    .detail-panel dd { margin-bottom: 2px; font-size: .82rem; color: #1e293b; }
     .search-box { max-width: 380px; }
-    .nav-tabs .nav-link { font-size: .78rem; padding: 6px 14px; }
-    .nav-tabs .nav-link.active { font-weight: 600; }
-    .badge { font-size: .65rem; font-weight: 500; }
+    .nav-tabs { border-bottom: 1px solid #e2e8f0; gap: 0; }
+    .nav-tabs .nav-link { font-size: .78rem; padding: 8px 16px; color: var(--text-muted); border: none; border-bottom: 2px solid transparent; transition: all .15s; margin: 0; }
+    .nav-tabs .nav-link:hover { color: #1e293b; border-color: transparent; background: transparent; }
+    .nav-tabs .nav-link.active { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); background: transparent; }
+    .badge { font-size: .65rem; font-weight: 500; padding: 4px 8px; border-radius: 6px; }
     .loading { text-align: center; padding: 60px 20px; }
-    .loading .spinner-border { width: 2.5rem; height: 2.5rem; }
+    .loading .spinner-border { width: 2.5rem; height: 2.5rem; color: var(--accent); }
     .row-click { cursor: pointer; }
     .row-click:hover { background: #eef5ff !important; }
     .schema-table-row { cursor: pointer; }
     .schema-table-row:hover { background: #f0f7ff; }
-    .module-header { margin-bottom: 16px; }
-    .module-header h4 { font-size: 1.1rem; font-weight: 600; }
-    .module-header h4 i { color: #3498db; margin-right: 8px; }
+    .module-header { margin-bottom: 20px; }
+    .module-header h4 { font-size: 1.15rem; font-weight: 700; color: #0f172a; }
+    .module-header h4 i { color: var(--accent); margin-right: 8px; }
     .btn-sm { font-size: .75rem; }
+    .form-control, .form-select { font-size: .82rem; border: 1px solid #e2e8f0; border-radius: var(--radius-sm); }
+    .form-control:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
     .form-control-sm, .form-select-sm { font-size: .78rem; }
-    .login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#1a2332 0,#0f1520 100%); }
-    .login-box { background:#fff; padding:40px; border-radius:12px; width:360px; box-shadow:0 10px 40px rgba(0,0,0,.3); }
+    .login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background: linear-gradient(135deg,#0f172a 0,#1e293b 50%,#0f172a 100%); }
+    .login-box { background:#fff; padding:44px; border-radius:16px; width:380px; box-shadow: 0 25px 60px rgba(0,0,0,.3); }
+    .chart-card { background: #fff; border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 20px; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .ani-fade { animation: fadeUp .4s ease both; }
   </style>
 </head>
 <body>
@@ -346,22 +377,40 @@
         try {
           const r = await API.get('/api/stats');
           const main = r.main, extra = r.extra;
-          let h = `<div class="module-header"><h4><i class="bi bi-speedometer2"></i>Dashboard</h4></div>
-            <div class="row g-3 mb-4">`;
+          const COLORS = [
+            {bg:'#eff6ff',bar:'#3b82f6',icon:'#2563eb'},
+            {bg:'#f0fdf4',bar:'#22c55e',icon:'#16a34a'},
+            {bg:'#fefce8',bar:'#eab308',icon:'#ca8a04'},
+            {bg:'#fef2f2',bar:'#ef4444',icon:'#dc2626'},
+            {bg:'#faf5ff',bar:'#a855f7',icon:'#9333ea'},
+            {bg:'#fff7ed',bar:'#f97316',icon:'#ea580c'},
+            {bg:'#fce7f3',bar:'#ec4899',icon:'#db2777'},
+            {bg:'#ecfeff',bar:'#06b6d4',icon:'#0891b2'},
+          ];
           const icons = {clientes:'people',stock:'box','movi (comprobantes)':'file-text',pedidos:'cart',proveedo:'truck',movmer:'arrow-left-right',cajamov:'cash',transacasientos:'journal'};
-          main.forEach(s => {
-            h += `<div class="col-md-3"><div class="card stat-card"><i class="bi bi-${icons[s.tabla]||'table'}"></i>
+          let h = `<div class="module-header"><h4><i class="bi bi-speedometer2"></i>Dashboard</h4></div>
+            <h6 class="text-muted mb-3 fw-semibold" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.5px">Principales</h6>
+            <div class="row g-3 mb-4">`;
+          main.forEach((s,i) => {
+            const c = COLORS[i % COLORS.length];
+            h += `<div class="col-md-3 ani-fade" style="animation-delay:${i*0.05}s"><div class="card stat-card" style="background:${c.bg}">
+              <div class="stat-bar" style="background:${c.bar}"></div>
+              <i class="bi bi-${icons[s.tabla]||'table'}" style="color:${c.icon}"></i>
               <div class="number">${Number(s.total).toLocaleString()}</div>
               <div class="label">${s.tabla}</div></div></div>`;
           });
-          h += `</div><div class="row g-3 mb-3">`;
+          h += `</div><h6 class="text-muted mb-3 fw-semibold" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.5px">Módulos Extendidos</h6>
+            <div class="row g-3 mb-4">`;
           const xicons = {s_empleados:'person-badge',p_ordenes:'gear',o_licitacion:'building',af_bien:'tools',o_ec_products:'shop',hd_incidentes:'headset',logi_rutas:'truck'};
-          extra.forEach(s => {
-            h += `<div class="col-md-3"><div class="card stat-card"><i class="bi bi-${xicons[s.tabla]||'table'}"></i>
+          extra.forEach((s,i) => {
+            const c = COLORS[(main.length + i) % COLORS.length];
+            h += `<div class="col-md-3 ani-fade" style="animation-delay:${(main.length+i)*0.05}s"><div class="card stat-card" style="background:${c.bg}">
+              <div class="stat-bar" style="background:${c.bar}"></div>
+              <i class="bi bi-${xicons[s.tabla]||'table'}" style="color:${c.icon}"></i>
               <div class="number">${Number(s.total).toLocaleString()}</div>
               <div class="label">${s.tabla}</div></div></div>`;
           });
-          h += `</div><div class="card"><div class="card-header"><i class="bi bi-info-circle me-2"></i>ERP FYPC Viewer</div>
+          h += `</div><div class="card"><div class="card-header"><i class="bi bi-info-circle me-2" style="color:var(--accent)"></i>ERP FYPC Viewer</div>
             <div class="card-body"><p class="mb-0 text-muted">Seleccione un módulo en el menú lateral para explorar. Base de datos: <strong>fypc</strong> (PostgreSQL).</p></div></div>`;
           $('app-content').innerHTML = h;
         } catch(e) {
