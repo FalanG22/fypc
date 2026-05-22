@@ -1,5 +1,8 @@
 const express = require('express');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const db = require('./db');
+const { auth } = require('./middleware/auth');
 
 const app = express();
 const PORT = 3000;
@@ -10,31 +13,76 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 app.use('/', require('./routes/dashboard'));
-app.use('/api/clientes', require('./routes/clientes'));
-app.use('/api/comprobantes', require('./routes/comprobantes'));
-app.use('/api/stock', require('./routes/stock'));
-app.use('/api/proveedores', require('./routes/proveedores'));
-app.use('/api/movimientos', require('./routes/movimientos'));
-app.use('/api/tesoreria', require('./routes/tesoreria'));
-app.use('/api/contabilidad', require('./routes/contabilidad'));
-app.use('/api/geografia', require('./routes/geografia'));
-app.use('/api/schema', require('./routes/schema'));
-app.use('/api/rrhh', require('./routes/rrhh'));
-app.use('/api/produccion', require('./routes/produccion'));
-app.use('/api/logistica', require('./routes/logistica'));
-app.use('/api/obras', require('./routes/obras'));
-app.use('/api/ecommerce', require('./routes/ecommerce'));
-app.use('/api/impuestos', require('./routes/impuestos'));
-app.use('/api/crm', require('./routes/crm'));
-app.use('/api/activosfijos', require('./routes/activosfijos'));
-app.use('/api/auxiliares', require('./routes/auxiliares'));
-app.use('/api/pedidos', require('./routes/pedidos'));
-app.use('/api/cobranzas', require('./routes/cobranzas'));
-app.use('/api/ventas', require('./routes/ventas'));
-app.use('/api/compras-tesoreria', require('./routes/compras_tesoreria'));
-app.use('/api/maestros', require('./routes/maestros'));
-app.use('/api/ctacte', require('./routes/ctacte'));
+app.use('/api/auth', require('./routes/auth'));
 
-app.listen(PORT, () => {
+const apiRoutes = [
+  ['/api/clientes', './routes/clientes'],
+  ['/api/comprobantes', './routes/comprobantes'],
+  ['/api/stock', './routes/stock'],
+  ['/api/proveedores', './routes/proveedores'],
+  ['/api/movimientos', './routes/movimientos'],
+  ['/api/tesoreria', './routes/tesoreria'],
+  ['/api/contabilidad', './routes/contabilidad'],
+  ['/api/geografia', './routes/geografia'],
+  ['/api/schema', './routes/schema'],
+  ['/api/rrhh', './routes/rrhh'],
+  ['/api/produccion', './routes/produccion'],
+  ['/api/logistica', './routes/logistica'],
+  ['/api/obras', './routes/obras'],
+  ['/api/ecommerce', './routes/ecommerce'],
+  ['/api/impuestos', './routes/impuestos'],
+  ['/api/crm', './routes/crm'],
+  ['/api/activosfijos', './routes/activosfijos'],
+  ['/api/auxiliares', './routes/auxiliares'],
+  ['/api/pedidos', './routes/pedidos'],
+  ['/api/cobranzas', './routes/cobranzas'],
+  ['/api/ventas', './routes/ventas'],
+  ['/api/compras-tesoreria', './routes/compras_tesoreria'],
+  ['/api/maestros', './routes/maestros'],
+  ['/api/ctacte', './routes/ctacte'],
+];
+apiRoutes.forEach(([mount, mod]) => {
+  app.use(mount, auth, require(mod));
+});
+
+async function initDB() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) DEFAULT 'user',
+        nombre VARCHAR(255),
+        activo BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    const admin = await db.query('SELECT id FROM usuarios WHERE username = $1', ['admin']);
+    if (admin.rows.length === 0) {
+      const hash = await bcrypt.hash('b1618Awj', 10);
+      await db.query(
+        'INSERT INTO usuarios (username, password, role, nombre) VALUES ($1,$2,$3,$4)',
+        ['admin', hash, 'admin', 'Administrador']
+      );
+      console.log('Usuario admin creado');
+    }
+    const guest = await db.query('SELECT id FROM usuarios WHERE username = $1', ['guest']);
+    if (guest.rows.length === 0) {
+      const hash = await bcrypt.hash('b1618Awj', 10);
+      await db.query(
+        'INSERT INTO usuarios (username, password, role, nombre) VALUES ($1,$2,$3,$4)',
+        ['guest', hash, 'user', 'Invitado']
+      );
+      console.log('Usuario guest creado');
+    }
+    console.log('Base de datos inicializada');
+  } catch (e) {
+    console.error('Error inicializando BD:', e.message);
+  }
+}
+
+app.listen(PORT, async () => {
   console.log(`ERP Viewer corriendo en http://localhost:${PORT}`);
+  await initDB();
 });

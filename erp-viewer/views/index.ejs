@@ -51,15 +51,40 @@
     .module-header h4 i { color: #3498db; margin-right: 8px; }
     .btn-sm { font-size: .75rem; }
     .form-control-sm, .form-select-sm { font-size: .78rem; }
+    .login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#1a2332 0,#0f1520 100%); }
+    .login-box { background:#fff; padding:40px; border-radius:12px; width:360px; box-shadow:0 10px 40px rgba(0,0,0,.3); }
   </style>
 </head>
 <body>
-  <nav class="sidebar" id="sidebar"></nav>
-  <main><div id="app-content"></div></main>
+  <div id="login-screen" class="login-screen">
+    <div class="login-box">
+      <div style="text-align:center;margin-bottom:24px">
+        <i class="bi bi-shield-lock" style="font-size:2.5rem;color:#3498db"></i>
+        <h5 class="mt-2 mb-1 fw-bold">ERP TANGO Viewer</h5>
+        <p class="text-muted small mb-0">Ingrese sus credenciales</p>
+      </div>
+      <div class="mb-3"><input type="text" class="form-control" id="login-user" placeholder="Usuario" autocomplete="off"></div>
+      <div class="mb-3"><input type="password" class="form-control" id="login-pass" placeholder="Contraseña"></div>
+      <button class="btn btn-primary w-100 mb-2" onclick="doLogin()"><i class="bi bi-box-arrow-in-right me-2"></i>Ingresar</button>
+      <div id="login-msg" class="text-danger small text-center"></div>
+    </div>
+  </div>
+  <div id="app-container" style="display:none">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main><div id="app-content"></div></main>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    const API = { async get(u) { const r=await fetch(u); if(!r.ok) throw await r.json(); return r.json(); } };
+    function getToken(){return localStorage.getItem('token')}
+    function authHeaders(){const t=getToken();return t?{'Authorization':'Bearer '+t}:{}}
+    async function handleRes(r){if(r.status===401){localStorage.removeItem('token');showLogin();throw{error:'Sesi\u00f3n expirada'}}return r}
+    const API = {
+      async get(u){const r=await handleRes(await fetch(u,{headers:authHeaders()}));if(!r.ok)throw await r.json();return r.json()},
+      async post(u,b){const r=await handleRes(await fetch(u,{method:'POST',headers:{...authHeaders(),'Content-Type':'application/json'},body:JSON.stringify(b)}));if(!r.ok)throw await r.json();return r.json()},
+      async put(u,b){const r=await handleRes(await fetch(u,{method:'PUT',headers:{...authHeaders(),'Content-Type':'application/json'},body:JSON.stringify(b)}));if(!r.ok)throw await r.json();return r.json()},
+      async del(u){const r=await handleRes(await fetch(u,{method:'DELETE',headers:authHeaders()}));if(!r.ok)throw await r.json();return r.json()}
+    };
     const $ = id => document.getElementById(id);
     const esc = s => { const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; };
     const fmt = (v,d) => v!=null&&v!=='' ? (d?Number(v).toFixed(d):v) : '';
@@ -92,7 +117,10 @@
       geografia: { icon:'geo-alt', label:'Geografía' },
       schema: { icon:'database', label:'Explorador BD' },
       auxiliares: { icon:'list', label:'Tablas Auxiliares' },
+      usuarios: { icon:'person-lock', label:'Usuarios' },
     };
+    let currentUser = null;
+    try { currentUser = JSON.parse(localStorage.getItem('user')||'{}'); } catch(e){}
 
     const GROUPS = [
       { label:'Principales', items:['dashboard','comprobantes','clientes','proveedores','stock','pedidos','ventas'] },
@@ -100,14 +128,16 @@
       { label:'Administración', items:['tesoreria','contabilidad','impuestos','cobranzas','ctacte','compras_tesoreria','obras','activosfijos'] },
       { label:'RRHH', items:['rrhh'] },
       { label:'Comercio Exterior', items:['ecommerce','crm'] },
-      { label:'Sistema', items:['geografia','schema','auxiliares'] },
+      { label:'Sistema', items:['geografia','schema','auxiliares','usuarios'] },
     ];
 
     let currentModule = 'dashboard', currentData = [];
     let moduleCache = {};
 
     function buildSidebar() {
-      let html = `<div class="brand"><h6><i class="bi bi-database me-2"></i>ERP TANGO</h6><small>fypc &bull; PostgreSQL</small></div>`;
+      const u=currentUser;
+      let html = `<div class="brand" style="position:relative"><h6><i class="bi bi-database me-2"></i>ERP TANGO</h6><small>${u.nombre||u.username||''}</small>
+        <a href="#" onclick="doLogout()" style="position:absolute;right:12px;top:12px;color:#5d7a9a;text-decoration:none" title="Cerrar sesi\u00f3n"><i class="bi bi-box-arrow-right"></i></a></div>`;
       GROUPS.forEach(g => {
         html += `<div class="mod-group">${g.label}</div>`;
         g.items.forEach(m => {
@@ -927,6 +957,64 @@
         };
         renderTabs(tabs,'lineas',tid=>tabContent(epMap,tid,'Tablas Auxiliares'));
       },
+      usuarios: async () => {
+        $('app-content').innerHTML = renderLoading();
+        try {
+          const users = await API.get('/api/auth/users');
+          const rolBadge = r => r==='admin'?'<span class="badge bg-danger">admin</span>':'<span class="badge bg-secondary">user</span>';
+          const actBadge = a => a?'<span class="badge bg-success">activo</span>':'<span class="badge bg-secondary">inactivo</span>';
+          let h = `<div class="module-header d-flex justify-content-between align-items-center"><h4><i class="bi bi-person-lock"></i>Usuarios</h4>
+            ${currentUser.role==='admin'?`<button class="btn btn-sm btn-primary" onclick="showUserForm()"><i class="bi bi-plus-lg"></i> Nuevo Usuario</button>`:''}</div>
+            <div class="card"><div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
+            <th>ID</th><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Creado</th>${currentUser.role==='admin'?'<th></th>':''}</tr></thead><tbody>`;
+          users.forEach(u => {
+            h += `<tr><td>${u.id}</td><td>${esc(u.username)}</td><td>${esc(u.nombre)}</td>
+              <td>${rolBadge(u.role)}</td><td>${actBadge(u.activo)}</td><td>${u.created_at?u.created_at.substring(0,10):''}</td>
+              ${currentUser.role==='admin'?`<td><button class="btn btn-sm btn-outline-primary" onclick="showUserForm(${u.id})"><i class="bi bi-pencil"></i></button></td>`:''}</tr>`;
+          });
+          h += `</tbody></table></div></div></div>`;
+          $('app-content').innerHTML = h;
+        } catch(e) {
+          $('app-content').innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`;
+        }
+      },
+    };
+    window.showUserForm = async (id) => {
+      let user = {username:'',nombre:'',password:'',role:'user'};
+      if (id) {
+        const users = await API.get('/api/auth/users');
+        user = users.find(u=>u.id===id) || user;
+      }
+      const isEdit = !!id;
+      const mBody = $('modalBody');
+      mBody.innerHTML = `<div class="p-2">
+        <div class="mb-3"><label class="form-label small">Usuario</label><input class="form-control form-control-sm" id="uf-user" value="${esc(user.username)}"></div>
+        <div class="mb-3"><label class="form-label small">Nombre</label><input class="form-control form-control-sm" id="uf-name" value="${esc(user.nombre)}"></div>
+        <div class="mb-3"><label class="form-label small">Contraseña${isEdit?' (dejar vacío para mantener)':''}</label><input type="password" class="form-control form-control-sm" id="uf-pass"></div>
+        <div class="mb-3"><label class="form-label small">Rol</label>
+          <select class="form-select form-select-sm" id="uf-role">
+            <option value="user" ${user.role==='user'?'selected':''}>Usuario</option>
+            <option value="admin" ${user.role==='admin'?'selected':''}>Administrador</option>
+          </select></div>
+        ${isEdit?`<div class="mb-3"><div class="form-check"><input class="form-check-input" type="checkbox" id="uf-activo" ${user.activo?'checked':''}><label class="form-check-label small">Activo</label></div></div>`:''}
+        <button class="btn btn-primary btn-sm w-100" onclick="saveUser(${id||''})"><i class="bi bi-check-lg"></i> ${isEdit?'Guardar Cambios':'Crear Usuario'}</button></div>`;
+      $('modalTitle').innerHTML = isEdit ? `<i class="bi bi-pencil me-2"></i>Editar Usuario` : `<i class="bi bi-plus-lg me-2"></i>Nuevo Usuario`;
+      bootstrap.Modal.getOrCreateInstance('#detalleModal').show();
+    };
+    window.saveUser = async (id) => {
+      const data = {
+        username: document.getElementById('uf-user').value,
+        nombre: document.getElementById('uf-name').value,
+        password: document.getElementById('uf-pass').value,
+        role: document.getElementById('uf-role').value,
+      };
+      if (id) data.activo = document.getElementById('uf-activo')?.checked;
+      try {
+        if (id) await API.put('/api/auth/users/'+id, data);
+        else await API.post('/api/auth/users', data);
+        bootstrap.Modal.getInstance('#detalleModal').hide();
+        loadModule('usuarios');
+      } catch(e) { alert(e.error||'Error'); }
     };
 
     function renderAllModules() {
@@ -1060,8 +1148,39 @@
       },
     };
 
-    buildSidebar();
-    loadModule('dashboard');
+    function showLogin(){
+      document.getElementById('login-screen').style.display='flex';
+      document.getElementById('app-container').style.display='none';
+    }
+    async function doLogin(){
+      const u=document.getElementById('login-user').value,p=document.getElementById('login-pass').value;
+      if(!u||!p)return;
+      document.getElementById('login-msg').textContent='Ingresando...';
+      try{
+        const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+        if(!r.ok){const e=await r.json();document.getElementById('login-msg').textContent=e.error||'Error';return}
+        const d=await r.json();
+        localStorage.setItem('token',d.token);
+        localStorage.setItem('user',JSON.stringify(d.user));
+        currentUser=d.user;
+        document.getElementById('login-screen').style.display='none';
+        document.getElementById('app-container').style.display='';
+        buildSidebar();loadModule('dashboard');
+      }catch(e){document.getElementById('login-msg').textContent='Error de conexi\u00f3n'}
+    }
+    function doLogout(){localStorage.removeItem('token');localStorage.removeItem('user');currentUser={};showLogin()}
+    document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
+    const token=getToken();
+    if(token){
+      API.get('/api/auth/me').then(u=>{
+        currentUser=u;
+        localStorage.setItem('user',JSON.stringify(u));
+        document.getElementById('login-screen').style.display='none';
+        document.getElementById('app-container').style.display='';
+        buildSidebar();loadModule('dashboard');
+      }).catch(()=>showLogin());
+    }else{showLogin()}
   </script>
 
   <div class="modal fade" id="detalleModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
