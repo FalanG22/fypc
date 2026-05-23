@@ -559,7 +559,7 @@
         </div>
         <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="fd"></div>
         <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="fh"></div>
-        <div class="col-md-1"><select class="form-select form-select-sm" id="lim"><option value="100">100</option><option value="500" selected>500</option><option value="1000">1000</option><option value="999999">Todos</option></select></div>
+        <div class="col-md-1"><select class="form-select form-select-sm" id="lim" onchange="doSearch()"><option value="100">100</option><option value="500" selected>500</option><option value="1000">1000</option><option value="999999">Todos</option></select></div>
       </div>
       <div id="r"></div><div id="d"></div>`;
     }
@@ -871,7 +871,7 @@
             <button class="btn btn-primary" onclick="doSearch()"><i class="bi bi-search"></i></button>
             <button class="btn btn-outline-secondary" onclick="clearSearch()"><i class="bi bi-x-lg"></i></button></div></div>
           <div class="col-md-2"><select class="form-select form-select-sm" id="rubroF" onchange="doSearch()"><option value="">Todos los rubros</option></select></div>
-          <div class="col-md-1"><select class="form-select form-select-sm" id="lim"><option value="100">100</option><option value="500" selected>500</option><option value="1000">1000</option><option value="999999">Todos</option></select></div></div>
+          <div class="col-md-1"><select class="form-select form-select-sm" id="lim" onchange="doSearch()"><option value="100">100</option><option value="500" selected>500</option><option value="1000">1000</option><option value="999999">Todos</option></select></div></div>
           <div id="r"></div><div id="d"></div>`;
         API.get('/api/stock/rubros').then(rubros=>{
           const sel=$('rubroF');
@@ -897,7 +897,7 @@
               <button class="btn btn-outline-secondary" onclick="clearPD()"><i class="bi bi-x-lg"></i></button></div></div>
             <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="pdD"></div>
             <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="pdH"></div>
-            <div class="col-md-1"><select class="form-select form-select-sm" id="pdL"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
+            <div class="col-md-1"><select class="form-select form-select-sm" id="pdL" onchange="loadPD()"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
           </div>
           <div id="pdR"></div>`;
         }
@@ -1010,7 +1010,7 @@
               <button class="btn btn-outline-secondary" onclick="clearMM()"><i class="bi bi-x-lg"></i></button></div></div>
             <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mmd"></div>
             <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mmh"></div>
-            <div class="col-md-1"><select class="form-select form-select-sm" id="mml"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
+            <div class="col-md-1"><select class="form-select form-select-sm" id="mml" onchange="loadMM()"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
           </div>
           <div id="mmR"></div>`;
         window.loadMM = async () => {
@@ -1073,7 +1073,7 @@
               <button class="btn btn-outline-secondary" onclick="clearMC()"><i class="bi bi-x-lg"></i></button></div></div>
             <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mcd"></div>
             <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mch"></div>
-            <div class="col-md-1"><select class="form-select form-select-sm" id="mcl"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
+            <div class="col-md-1"><select class="form-select form-select-sm" id="mcl" onchange="loadMC()"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
             <div class="col-md-1"><label class="form-check-label"><input type="checkbox" id="mcAnulados"> Anulados</label></div>
           </div>
           <div id="mcR"></div>`;
@@ -1206,7 +1206,7 @@
                 <button class="btn btn-outline-secondary" onclick="clearCob()"><i class="bi bi-x-lg"></i></button></div></div>
               <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="cobD"></div>
               <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="cobH"></div>
-              <div class="col-md-1"><select class="form-select form-select-sm" id="cobL"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
+              <div class="col-md-1"><select class="form-select form-select-sm" id="cobL" onchange="loadCobTab()"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
             </div>
             <div id="cobR"></div>`;
           $('app-content').innerHTML = h;
@@ -1269,7 +1269,7 @@
                 <button class="btn btn-outline-secondary" onclick="clearCT()"><i class="bi bi-x-lg"></i></button></div></div>
               <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="ctD"></div>
               <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="ctH"></div>
-              <div class="col-md-1"><select class="form-select form-select-sm" id="ctL"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
+              <div class="col-md-1"><select class="form-select form-select-sm" id="ctL" onchange="loadCTTab()"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
             </div>
             <div id="ctR"></div>`;
           $('app-content').innerHTML = h;
@@ -1365,7 +1365,7 @@
                 <input type="text" class="form-control" id="mS" placeholder="Buscar...">
                 <button class="btn btn-primary" onclick="loadMTab()"><i class="bi bi-search"></i></button>
                 <button class="btn btn-outline-secondary" onclick="clearM()"><i class="bi bi-x-lg"></i></button></div></div>
-              <div class="col-md-2"><select class="form-select form-select-sm" id="mLim"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
+              <div class="col-md-2"><select class="form-select form-select-sm" id="mLim" onchange="loadMTab()"><option value="100">100</option><option value="500" selected>500</option><option value="999999">Todos</option></select></div>
             </div>
             <div id="mR"></div>`;
           $('app-content').innerHTML = h;
