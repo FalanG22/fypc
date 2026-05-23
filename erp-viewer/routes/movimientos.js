@@ -54,13 +54,12 @@ router.get('/mercaderia/grupos', async (req, res) => {
   try {
     const { search, desde, hasta, limit } = req.query;
     let sql = `SELECT remito, MIN(fecha) as fecha, cliente,
-               COUNT(*) as items, SUM(cantidad) as total_cant,
-               MAX(factura) as factura
+               COUNT(*) as items, SUM(cantidad) as total_cant
                FROM movmer`;
     const conditions = [];
     const params = [];
     if (search) {
-      conditions.push(`(remito ILIKE $${params.length+1} OR cliente ILIKE $${params.length+1} OR factura ILIKE $${params.length+1})`);
+      conditions.push(`(remito ILIKE $${params.length+1} OR cliente ILIKE $${params.length+1})`);
       params.push(`%${search}%`);
     }
     if (desde) { conditions.push(`fecha >= $${params.length+1}`); params.push(desde); }
