@@ -1222,19 +1222,22 @@
         } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
       },
       comprobantes: async (id) => {
-        $('d').innerHTML=renderLoading();
+        const modal = bootstrap.Modal.getOrCreateInstance('#detalleModal');
+        $('modalBody').innerHTML=renderLoading();
+        $('modalTitle').innerHTML=`<i class="bi bi-file-text me-2"></i>Comprobante`;
+        modal.show();
         try {
           const d=await API.get(`/api/comprobantes/${id}`);
-          let h=`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><span>Comprobante: ${d.comp}</span><button class="btn btn-sm btn-outline-secondary" onclick="$('d').innerHTML=''"><i class="bi bi-x-lg"></i></button></div><div class="card-body"><div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
+          let h=`<div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
           [['Nro',d.comp],['Tipo',d.tipocomprobante],['Fecha',d.fecha],['Vencimiento',d.fechaven],
            ['Cliente',d.nombre],['CUIT',d.cuit],['Neto',money(d.neto)],['IVA',money(d.iva)],
            ['Total',money(d.total)],['Estado',d.estadodoc],['Vendedor',d.vendedor]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
           h+=`</dl></div></div><div class="col-md-6"><div class="detail-panel"><dl>`;
           [['Observaciones',d.obs],['CAE',d.campocae],['Fec.CAE',d.campofechacae],['MoviID',d.moviid],
            ['Moneda',d.moneda],['COTIZACION',d.cotizacionid]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
-          h+=`</dl></div></div></div></div></div>`;
-          $('d').innerHTML=h;
-        } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+          h+=`</dl></div></div></div>`;
+          $('modalBody').innerHTML=h;
+        } catch(e){$('modalBody').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
       },
       stock: async (id) => {
         $('d').innerHTML=renderLoading();
