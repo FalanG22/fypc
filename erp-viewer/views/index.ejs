@@ -414,15 +414,16 @@
 
     const PAGE_SIZE = 200;
     let pageOffset = 0;
+    let reloadFn = null;
 
     window.prevPage = () => {
       if (pageOffset <= 0) return;
       pageOffset = Math.max(0, pageOffset - PAGE_SIZE);
-      loadModule(currentModule);
+      if (reloadFn) reloadFn();
     };
     window.nextPage = () => {
       pageOffset += PAGE_SIZE;
-      loadModule(currentModule);
+      if (reloadFn) reloadFn();
     };
     function paginationBar(hasNext) {
       const page = Math.floor(pageOffset / PAGE_SIZE) + 1;
@@ -603,7 +604,7 @@
       return p.toString();
     }
 
-    function doSearch() { pageOffset = 0; loadModule(currentModule); }
+    function doSearch() { pageOffset = 0; if (reloadFn) reloadFn(); }
     function clearSearch() { ['s','fd','fh'].forEach(id=>{const e=$(id);if(e)e.value='';}); doSearch(); }
 
     function showDetail(id) {
@@ -613,8 +614,12 @@
 
     function renderSimple(endpoint, cols, rowKey, title, placeholder) {
       $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-${MODULES[currentModule]?.icon||'table'}"></i>${title}</h4>${XLS_BTN}</div>${buildSearchInput(placeholder||'Buscar...')}<div id="r"></div>`;
-      const r=$('r'); r.innerHTML=renderLoading();
-      API.get(`/api/${endpoint}?${sp()}`).then(d=>{currentData=d;const pd=paginateData(d);r.innerHTML=buildTable(cols,pd.data,rowKey)+paginationBar(pd.hasNext);}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
+      reloadFn = () => {
+        const r = $('r'); if (!r) return;
+        r.innerHTML = renderLoading();
+        API.get(`/api/${endpoint}?${sp()}`).then(d=>{currentData=d;const pd=paginateData(d);r.innerHTML=buildTable(cols,pd.data,rowKey)+paginationBar(pd.hasNext);}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
+      };
+      reloadFn();
     }
 
     function loadModule(mod) {
@@ -906,13 +911,17 @@
           const sel=$('rubroF');
           rubros.forEach(r=>{sel.innerHTML+=`<option value="${r.codigo}">${r.nombre}</option>`;});
         }).catch(()=>{});
-        const r=$('r'); r.innerHTML=renderLoading();
-        const p=sp(); const rub=$('rubroF')?.value; if(rub) p.set('rubro',rub);
-        API.get(`/api/stock?${p}`).then(d=>{currentData=d;const pd=paginateData(d);r.innerHTML=buildTable([
-          {key:'clave',label:'Código'},{key:'detalle',label:'Descripción'},{key:'rubro_nombre',label:'Rubro'},
-          {key:'linea_nombre',label:'Línea'},{key:'unidad',label:'Unidad'},{key:'codbar',label:'Barra'},
-          {key:'precio',label:'Precio',render:money},{key:'preciopro',label:'Costo',render:money}
-        ],pd.data,'stockid')+paginationBar(pd.hasNext);}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
+        reloadFn = () => {
+          const r=$('r'); if (!r) return;
+          r.innerHTML=renderLoading();
+          const p=sp(); const rub=$('rubroF')?.value; if(rub) p.set('rubro',rub);
+          API.get(`/api/stock?${p}`).then(d=>{currentData=d;const pd=paginateData(d);r.innerHTML=buildTable([
+            {key:'clave',label:'Código'},{key:'detalle',label:'Descripción'},{key:'rubro_nombre',label:'Rubro'},
+            {key:'linea_nombre',label:'Línea'},{key:'unidad',label:'Unidad'},{key:'codbar',label:'Barra'},
+            {key:'precio',label:'Precio',render:money},{key:'preciopro',label:'Costo',render:money}
+          ],pd.data,'stockid')+paginationBar(pd.hasNext);}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
+        };
+        reloadFn();
       },
       pedidos: async () => {
         let pdCache = null;
@@ -932,6 +941,7 @@
 
         $('app-content').innerHTML = pdHTML();
 
+        reloadFn = () => loadPD();
         window.loadPD = async () => {
           const r = $('pdR'); if (!r) return;
           const p = new URLSearchParams();
@@ -1032,13 +1042,14 @@
         $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-arrow-left-right"></i>Movimientos de Mercadería</h4>${XLS_BTN}</div>
           <div class="row g-2 mb-3 align-items-center">
             <div class="col-md-5"><div class="input-group input-group-sm">
-              <input type="text" class="form-control" id="mms" placeholder="Remito, nro pedido, art\u00edculo...">
+              <input type="text" class="form-control" id="mmS" placeholder="Remito, nro pedido, art\u00edculo...">
               <button class="btn btn-primary" onclick="pageOffset=0;loadMM()"><i class="bi bi-search"></i></button>
               <button class="btn btn-outline-secondary" onclick="clearMM()"><i class="bi bi-x-lg"></i></button></div></div>
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mmd"></div>
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mmh"></div>
+            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mmD"></div>
+            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mmH"></div>
           </div>
           <div id="mmR"></div>`;
+        reloadFn = () => loadMM();
         window.loadMM = async () => {
           const r = $('mmR'); if (!r) return;
           r.innerHTML = renderLoading();
@@ -1095,14 +1106,15 @@
         $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-cash"></i>Movimientos de Caja / Bancos</h4>${XLS_BTN}</div>
           <div class="row g-2 mb-3 align-items-center">
             <div class="col-md-5"><div class="input-group input-group-sm">
-              <input type="text" class="form-control" id="mcs" placeholder="Comprobante, concepto...">
+              <input type="text" class="form-control" id="mcS" placeholder="Comprobante, concepto...">
               <button class="btn btn-primary" onclick="pageOffset=0;loadMC()"><i class="bi bi-search"></i></button>
               <button class="btn btn-outline-secondary" onclick="clearMC()"><i class="bi bi-x-lg"></i></button></div></div>
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mcd"></div>
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mch"></div>
+            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mcD"></div>
+            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mcH"></div>
             <div class="col-md-1"><label class="form-check-label"><input type="checkbox" id="mcAnulados"> Anulados</label></div>
           </div>
           <div id="mcR"></div>`;
+        reloadFn = () => loadMC();
         window.loadMC = async () => {
           const r = $('mcR'); if (!r) return;
           r.innerHTML = renderLoading();
@@ -1278,6 +1290,7 @@
           loadCobTab();
         };
 
+        reloadFn = () => loadCobTab();
         renderCob();
       },
       compras_tesoreria: () => {
@@ -1338,6 +1351,7 @@
           } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
         };
         window.clearCT = () => { pageOffset = 0; ['ctS','ctD','ctH'].forEach(id=>{const e=$(id);if(e)e.value='';}); loadCTTab(); };
+        reloadFn = () => loadCTTab();
         window.showOPDetalle = async (promoviid) => {
           const r = $('ctR'); if (!r) return;
           r.innerHTML = renderLoading();
@@ -1435,6 +1449,7 @@
           } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
         };
         window.clearM = () => { pageOffset = 0; const e=$('mS');if(e)e.value='';loadMTab(); };
+        reloadFn = () => loadMTab();
         window.showMDetail = async (id) => {
           if (!id) return;
           $('modalBody').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Cargando...</p></div>';
