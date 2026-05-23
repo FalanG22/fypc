@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --sidebar-bg: #0f1419;
@@ -619,8 +620,11 @@
       dashboard: async () => {
         $('app-content').innerHTML = renderLoading();
         try {
-          const r = await API.get('/api/stats');
-          const main = r.main, extra = r.extra;
+          const [sr, cr] = await Promise.all([
+            API.get('/api/stats'),
+            API.get('/api/dashboard/charts').catch(()=>null)
+          ]);
+          const main = sr.main;
           const COLORS = [
             {bg:'#eff6ff',bar:'#3b82f6',icon:'#2563eb'},
             {bg:'#f0fdf4',bar:'#22c55e',icon:'#16a34a'},
@@ -633,30 +637,166 @@
           ];
           const icons = {clientes:'people',stock:'box','movi (comprobantes)':'file-text',pedidos:'cart',proveedo:'truck',movmer:'arrow-left-right',cajamov:'cash',transacasientos:'journal'};
           let h = `<div class="module-header"><h4><i class="bi bi-speedometer2"></i>Dashboard</h4></div>
-            <h6 class="text-muted mb-3 fw-semibold" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.5px">Principales</h6>
             <div class="row g-3 mb-4">`;
           main.forEach((s,i) => {
             const c = COLORS[i % COLORS.length];
-            h += `<div class="col-md-3 ani-fade" style="animation-delay:${i*0.05}s"><div class="card stat-card" style="background:${c.bg}">
+            h += `<div class="col-md-3 col-6 ani-fade" style="animation-delay:${i*0.05}s"><div class="card stat-card" style="background:${c.bg}">
               <div class="stat-bar" style="background:${c.bar}"></div>
               <i class="bi bi-${icons[s.tabla]||'table'}" style="color:${c.icon}"></i>
               <div class="number">${Number(s.total).toLocaleString()}</div>
               <div class="label">${s.tabla}</div></div></div>`;
           });
-          h += `</div><h6 class="text-muted mb-3 fw-semibold" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.5px">Módulos Extendidos</h6>
-            <div class="row g-3 mb-4">`;
-          const xicons = {s_empleados:'person-badge',p_ordenes:'gear',o_licitacion:'building',af_bien:'tools',o_ec_products:'shop',hd_incidentes:'headset',logi_rutas:'truck'};
-          extra.forEach((s,i) => {
-            const c = COLORS[(main.length + i) % COLORS.length];
-            h += `<div class="col-md-3 ani-fade" style="animation-delay:${(main.length+i)*0.05}s"><div class="card stat-card" style="background:${c.bg}">
-              <div class="stat-bar" style="background:${c.bar}"></div>
-              <i class="bi bi-${xicons[s.tabla]||'table'}" style="color:${c.icon}"></i>
-              <div class="number">${Number(s.total).toLocaleString()}</div>
-              <div class="label">${s.tabla}</div></div></div>`;
-          });
-          h += `</div><div class="card"><div class="card-header"><i class="bi bi-info-circle me-2" style="color:var(--accent)"></i>ERP FYPC Viewer</div>
+          h += `</div>`;
+          if (cr) {
+            h += `<div class="row g-3 mb-4">
+              <div class="col-md-8"><div class="card"><div class="card-header"><i class="bi bi-graph-up me-2" style="color:var(--accent)"></i>Ventas Mensuales (últ. 12 meses)</div>
+                <div class="card-body"><canvas id="chVentasMes" height="240"></canvas></div></div></div>
+              <div class="col-md-4"><div class="card"><div class="card-header"><i class="bi bi-pie-chart me-2" style="color:var(--accent)"></i>Formas de Pago</div>
+                <div class="card-body"><canvas id="chPagos" height="240"></canvas></div></div></div></div>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6"><div class="card"><div class="card-header"><i class="bi bi-trophy me-2" style="color:var(--accent)"></i>Top 10 Clientes</div>
+                <div class="card-body"><canvas id="chClientes" height="280"></canvas></div></div></div>
+              <div class="col-md-6"><div class="card"><div class="card-header"><i class="bi bi-bar-chart me-2" style="color:var(--accent)"></i>Ventas por Vendedor</div>
+                <div class="card-body"><canvas id="chVendedores" height="280"></canvas></div></div></div></div>
+            <div class="row g-3 mb-4">
+              <div class="col-md-12"><div class="card"><div class="card-header"><i class="bi bi-box-seam me-2" style="color:var(--accent)"></i>Top 10 Productos</div>
+                <div class="card-body"><canvas id="chProductos" height="260"></canvas></div></div></div></div>`;
+          }
+          h += `<div class="card mb-4"><div class="card-header"><i class="bi bi-info-circle me-2" style="color:var(--accent)"></i>ERP FYPC Viewer</div>
             <div class="card-body"><p class="mb-0 text-muted">Seleccione un módulo en el menú lateral para explorar. Base de datos: <strong>fypc</strong> (PostgreSQL).</p></div></div>`;
           $('app-content').innerHTML = h;
+
+          if (cr) {
+            const chartColors = ['#3b82f6','#22c55e','#eab308','#ef4444','#a855f7','#f97316','#ec4899','#06b6d4','#84cc16','#14b8a6'];
+            const chartColorsAlpha = chartColors.map(c=>c+'33');
+
+            ['chVentasMes','chPagos','chClientes','chVendedores','chProductos'].forEach(id=>{
+              const existing = Chart.getChart(id);
+              if (existing) existing.destroy();
+            });
+
+            const vm = cr.ventas_mes;
+            if (vm && vm.length) {
+              new Chart('chVentasMes', {
+                type: 'bar',
+                data: {
+                  labels: vm.map(r=>r.mes),
+                  datasets: [{
+                    label: 'Total $',
+                    data: vm.map(r=>Number(r.total)),
+                    backgroundColor: '#3b82f633',
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                  }]
+                },
+                options: {
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    y: { beginAtZero: true, ticks: { callback:v=>'$'+Number(v).toLocaleString(), font:{size:10} } },
+                    x: { ticks: { font:{size:9} } }
+                  }
+                }
+              });
+            }
+
+            const fp = cr.formas_pago;
+            if (fp && fp.length) {
+              new Chart('chPagos', {
+                type: 'doughnut',
+                data: {
+                  labels: fp.map(r=>r.detalle),
+                  datasets: [{
+                    data: fp.map(r=>Number(r.total)),
+                    backgroundColor: chartColors.slice(0,fp.length),
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                  }]
+                },
+                options: {
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: {
+                    legend: { position:'bottom', labels: { font:{size:10}, boxWidth:12, padding:8 } }
+                  }
+                }
+              });
+            }
+
+            const tc = cr.top_clientes;
+            if (tc && tc.length) {
+              new Chart('chClientes', {
+                type: 'bar',
+                data: {
+                  labels: tc.map(r=>r.nombre).reverse(),
+                  datasets: [{
+                    label: 'Total $',
+                    data: tc.map(r=>Number(r.total)).reverse(),
+                    backgroundColor: chartColorsAlpha[0],
+                    borderColor: chartColors[0],
+                    borderWidth: 2,
+                    borderRadius: 4,
+                  }]
+                },
+                options: {
+                  indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    x: { beginAtZero: true, ticks: { callback:v=>'$'+Number(v).toLocaleString(), font:{size:9} } },
+                    y: { ticks: { font:{size:9} } }
+                  }
+                }
+              });
+            }
+
+            const vv = cr.vendedores;
+            if (vv && vv.length) {
+              new Chart('chVendedores', {
+                type: 'doughnut',
+                data: {
+                  labels: vv.map(r=>r.vendedor),
+                  datasets: [{
+                    data: vv.map(r=>Number(r.total)),
+                    backgroundColor: chartColors.slice(0,vv.length),
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                  }]
+                },
+                options: {
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: {
+                    legend: { position:'bottom', labels: { font:{size:10}, boxWidth:12, padding:8 } }
+                  }
+                }
+              });
+            }
+
+            const tp = cr.top_productos;
+            if (tp && tp.length) {
+              new Chart('chProductos', {
+                type: 'bar',
+                data: {
+                  labels: tp.map(r=>r.detalle?.length>35?r.detalle.substring(0,35)+'...':r.detalle).reverse(),
+                  datasets: [{
+                    label: 'Total $',
+                    data: tp.map(r=>Number(r.total)).reverse(),
+                    backgroundColor: chartColorsAlpha[2],
+                    borderColor: chartColors[2],
+                    borderWidth: 2,
+                    borderRadius: 4,
+                  }]
+                },
+                options: {
+                  indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    x: { beginAtZero: true, ticks: { callback:v=>'$'+Number(v).toLocaleString(), font:{size:9} } },
+                    y: { ticks: { font:{size:8} } }
+                  }
+                }
+              });
+            }
+          }
         } catch(e) {
           $('app-content').innerHTML = `<div class="alert alert-danger">Error: ${e.error||e.message}</div>`;
         }
