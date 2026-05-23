@@ -227,13 +227,13 @@
     .row-click { cursor: pointer; }
     .row-click:hover { background: rgba(59,130,246,.07) !important; }
 
-    .module-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 24px; }
-    .btn-glass-green { background:rgba(22,163,74,.12); color:#16a34a; border:1px solid rgba(22,163,74,.25); backdrop-filter:blur(4px); font-weight:600; }
-    .btn-glass-green:hover { background:rgba(22,163,74,.22); border-color:rgba(22,163,74,.45); color:#15803d; }
+    .module-header { position:relative; margin-bottom:24px; }
+    .btn-xls { position:absolute; top:0; right:0; background:rgba(22,163,74,.13); color:#16a34a; border:1px solid rgba(22,163,74,.28); border-radius:7px; padding:4px 10px; font-size:.75rem; font-weight:600; cursor:pointer; backdrop-filter:blur(4px); transition:.2s; display:inline-flex; align-items:center; gap:5px; line-height:1.4; }
+    .btn-xls:hover { background:rgba(22,163,74,.25); border-color:rgba(22,163,74,.5); color:#15803d; }
     .module-header h4 {
       font-size: 1.2rem; font-weight: 700; color: #0f172a;
       text-shadow: 0 1px 2px rgba(255,255,255,.4);
-      display:flex; align-items:center; gap:10px; flex-shrink:0;
+      display:flex; align-items:center; gap:10px; padding-right:80px;
     }
     .module-header h4 i { color: var(--accent); }
 
@@ -412,7 +412,7 @@
     const fmt = (v,d) => v!=null&&v!=='' ? (d?Number(v).toFixed(d):v) : '';
     const money = v => v!=null ? `$${Number(v).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '';
 
-    function exportModuleExcel() {
+    window.xlsExp = function() {
       const tables = document.querySelectorAll('#app-content table.table');
       if (!tables.length) { alert('No hay datos para exportar'); return; }
       const wb = XLSX.utils.book_new();
@@ -422,9 +422,8 @@
         XLSX.utils.book_append_sheet(wb, ws, name);
       });
       XLSX.writeFile(wb, `${currentModule||'export'}_${new Date().toISOString().slice(0,10)}.xlsx`);
-    }
-
-    const BTN_XLS = '<button class="btn btn-sm btn-glass-green" onclick="exportModuleExcel()"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>';
+    };
+    window.xlsBtn = () => '<button class="btn-xls" onclick="xlsExp()"><i class="bi bi-file-earmark-excel"></i>Excel</button>';
 
     const MODULES = {
       dashboard: { icon:'speedometer2', label:'Dashboard' },
@@ -582,7 +581,7 @@
     }
 
     function renderSimple(endpoint, cols, rowKey, title, placeholder) {
-      $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-${MODULES[currentModule]?.icon||'table'}"></i>${title}</h4>${BTN_XLS}</div>${buildSearchInput(placeholder||'Buscar...')}<div id="r"></div>`;
+      $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-${MODULES[currentModule]?.icon||'table'}"></i>${title}</h4>${window.xlsBtn()}</div>${buildSearchInput(placeholder||'Buscar...')}<div id="r"></div>`;
       const r=$('r'); r.innerHTML=renderLoading();
       API.get(`/api/${endpoint}?${sp()}`).then(d=>{currentData=d;r.innerHTML=buildTable(cols,d,rowKey);}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
     }
@@ -597,7 +596,7 @@
     }
 
     function renderTabs(tabs, defaultTab, contentFn) {
-      let h = `<div class="module-header"><h4><i class="bi bi-${MODULES[currentModule]?.icon||'table'}"></i>${MODULES[currentModule]?.label||''}</h4>${BTN_XLS}</div>`;
+      let h = `<div class="module-header"><h4><i class="bi bi-${MODULES[currentModule]?.icon||'table'}"></i>${MODULES[currentModule]?.label||''}</h4>${window.xlsBtn()}</div>`;
       h += `<ul class="nav nav-tabs mb-3" id="tabs">`;
       tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${t.id}">${t.label}</a></li>`; });
       h+=`</ul><div id="tabc"></div>`;
@@ -1002,7 +1001,7 @@
         loadPD();
       },
       movmercaderia: async () => {
-        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-arrow-left-right"></i>Movimientos de Mercadería</h4>${BTN_XLS}</div>
+        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-arrow-left-right"></i>Movimientos de Mercadería</h4>${window.xlsBtn()}</div>
           <div class="row g-2 mb-3 align-items-center">
             <div class="col-md-5"><div class="input-group input-group-sm">
               <input type="text" class="form-control" id="mms" placeholder="Remito, nro pedido, art\u00edculo...">
@@ -1065,7 +1064,7 @@
         loadMM();
       },
       movcaja: async () => {
-        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-cash"></i>Movimientos de Caja / Bancos</h4>${BTN_XLS}</div>
+        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-cash"></i>Movimientos de Caja / Bancos</h4>${window.xlsBtn()}</div>
           <div class="row g-2 mb-3 align-items-center">
             <div class="col-md-5"><div class="input-group input-group-sm">
               <input type="text" class="form-control" id="mcs" placeholder="Comprobante, concepto...">
@@ -1151,7 +1150,7 @@
         ];
         let curTab = tabs[0];
         function hdr() {
-          let h = `<div class="module-header"><h4><i class="bi bi-piggy-bank"></i>Tesorería</h4>${BTN_XLS}</div>
+          let h = `<div class="module-header"><h4><i class="bi bi-piggy-bank"></i>Tesorería</h4>${window.xlsBtn()}</div>
             <ul class="nav nav-tabs mb-3" id="tesTabs">`;
           tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${i}">${t.label}</a></li>`; });
           h+=`</ul><div id="tesR"></div>`;
@@ -1195,7 +1194,7 @@
         let sortCol = '', sortDir = 'asc';
 
         function renderCob() {
-          let h = `<div class="module-header"><h4><i class="bi bi-receipt"></i>Recibos y Cta. Cte.</h4>${BTN_XLS}</div>
+          let h = `<div class="module-header"><h4><i class="bi bi-receipt"></i>Recibos y Cta. Cte.</h4>${window.xlsBtn()}</div>
             <ul class="nav nav-tabs mb-3" id="cobTabs">`;
           tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${i}">${t.label}</a></li>`; });
           h+=`</ul>
@@ -1258,7 +1257,7 @@
         ];
         let curTab = tabs[0];
         function renderCT() {
-          let h = `<div class="module-header"><h4><i class="bi bi-wallet"></i>Compras / Tesorería</h4>${BTN_XLS}</div>
+          let h = `<div class="module-header"><h4><i class="bi bi-wallet"></i>Compras / Tesorería</h4>${window.xlsBtn()}</div>
             <ul class="nav nav-tabs mb-3" id="ctTabs">`;
           tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${i}">${t.label}</a></li>`; });
           h+=`</ul>
@@ -1471,7 +1470,7 @@
       },
 
       ctacte: () => {
-        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-wallet2"></i>Cuenta Corriente - Clientes</h4>${BTN_XLS}</div>
+        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-wallet2"></i>Cuenta Corriente - Clientes</h4>${window.xlsBtn()}</div>
           <div class="row g-2 mb-3 align-items-center">
             <div class="col-md-4"><div class="input-group input-group-sm">
               <input type="text" class="form-control" id="ctaSearch" placeholder="Buscar cliente...">
@@ -1538,7 +1537,7 @@
         $('app-content').innerHTML = renderLoading();
         try {
           const[cuentas,plan,asientos]=await Promise.all([API.get('/api/contabilidad/cuentas'),API.get('/api/contabilidad/plancuentas'),API.get('/api/contabilidad/asientos?limit=100')]);
-          $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-journal"></i>Contabilidad</h4>${BTN_XLS}</div>
+          $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-journal"></i>Contabilidad</h4>${window.xlsBtn()}</div>
             <ul class="nav nav-tabs mb-3" id="ctabs">
               <li class="nav-item"><a class="nav-link active" href="#" data-tab="asi">Asientos</a></li>
               <li class="nav-item"><a class="nav-link" href="#" data-tab="cta">Cuentas</a></li>
