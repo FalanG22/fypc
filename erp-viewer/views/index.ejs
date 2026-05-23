@@ -1206,20 +1206,23 @@
 
     const DETAIL_FUNCS = {
       clientes: async (id) => {
-        $('d').innerHTML=renderLoading();
+        const modal = bootstrap.Modal.getOrCreateInstance('#detalleModal');
+        $('modalBody').innerHTML=renderLoading();
+        $('modalTitle').innerHTML=`<i class="bi bi-people me-2"></i>Cliente`;
+        modal.show();
         try {
           const d=await API.get(`/api/clientes/${id}`);
           const cbs=await API.get(`/api/clientes/${id}/comprobantes`);
-          let h=`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><span>Cliente: ${d.cliente} - ${d.nombre}</span><button class="btn btn-sm btn-outline-secondary" onclick="$('d').innerHTML=''"><i class="bi bi-x-lg"></i></button></div><div class="card-body"><div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
+          let h=`<div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
           [['Cliente',d.cliente],['Nombre',d.nombre],['Denominación',d.deno],['CUIT',d.cuit],
            ['Domicilio',d.domicilio],['Localidad',d.localidad],['Provincia',d.provnom],['CP',d.codpos],
            ['Email',d.email],['Teléfono',d.telefono],['Vendedor',d.vendedor],['Lista',d.lista],
            ['Moneda',d.moneda],['Crédito',money(d.credito)],['Cond.IVA',d.taxcond]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
           h+=`</dl></div></div><div class="col-md-6"><h6 class="mb-2">Últimos Comprobantes</h6>`;
           h+=buildTable([{key:'comp',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'tipocomprobante',label:'Tipo'},{key:'neto',label:'Neto',render:money},{key:'iva',label:'IVA',render:money}],cbs.slice(0,30));
-          h+=`</div></div></div></div>`;
-          $('d').innerHTML=h;
-        } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+          h+=`</div></div>`;
+          $('modalBody').innerHTML=h;
+        } catch(e){$('modalBody').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
       },
       comprobantes: async (id) => {
         const modal = bootstrap.Modal.getOrCreateInstance('#detalleModal');
@@ -1259,16 +1262,19 @@
         } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
       },
       proveedores: async (id) => {
-        $('d').innerHTML=renderLoading();
+        const modal = bootstrap.Modal.getOrCreateInstance('#detalleModal');
+        $('modalBody').innerHTML=renderLoading();
+        $('modalTitle').innerHTML=`<i class="bi bi-truck me-2"></i>Proveedor`;
+        modal.show();
         try {
           const d=await API.get(`/api/proveedores/${id}`);
-          let h=`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><span>Proveedor: ${d.proveedor} - ${d.nombre}</span><button class="btn btn-sm btn-outline-secondary" onclick="$('d').innerHTML=''"><i class="bi bi-x-lg"></i></button></div><div class="card-body"><div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
+          let h=`<div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
           [['Proveedor',d.proveedor],['Nombre',d.nombre],['Denominación',d.deno],['CUIT',d.cuit],
            ['Domicilio',d.domicilio],['Localidad',d.localidad],['Provincia',d.provincia],
            ['Teléfono',d.telefono],['Cond.IVA',d.ivare],['Moneda',d.moneda],['Saldo',money(d.saldo)]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
-          h+=`</dl></div></div></div></div></div>`;
-          $('d').innerHTML=h;
-        } catch(e){$('d').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+          h+=`</dl></div></div></div>`;
+          $('modalBody').innerHTML=h;
+        } catch(e){$('modalBody').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
       },
       ventas: async (id) => {
         $('modalBody').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Cargando...</p></div>';
