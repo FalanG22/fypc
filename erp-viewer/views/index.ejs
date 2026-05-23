@@ -144,19 +144,12 @@
       compras_tesoreria: { icon:'wallet', label:'Compras / Tesorería' },
       maestros: { icon:'bookmark-star', label:'Maestros' },
       ctacte: { icon:'wallet2', label:'Cta.Cte.' },
-      produccion: { icon:'gear', label:'Producción' },
-      logistica: { icon:'truck-flatbed', label:'Logística' },
+
       rrhh: { icon:'person-badge', label:'RRHH / Sueldos' },
       tesoreria: { icon:'piggy-bank', label:'Tesorería' },
       contabilidad: { icon:'journal', label:'Contabilidad' },
       impuestos: { icon:'file-earmark-text', label:'Impuestos' },
       obras: { icon:'building', label:'Obras / Licitaciones' },
-      activosfijos: { icon:'tools', label:'Activos Fijos' },
-      ecommerce: { icon:'shop', label:'E-Commerce' },
-      crm: { icon:'headset', label:'CRM / Incidentes' },
-      geografia: { icon:'geo-alt', label:'Geografía' },
-      schema: { icon:'database', label:'Explorador BD' },
-      auxiliares: { icon:'list', label:'Tablas Auxiliares' },
       usuarios: { icon:'person-lock', label:'Usuarios' },
     };
     let currentUser = null;
@@ -164,11 +157,10 @@
 
     const GROUPS = [
       { label:'Principales', items:['dashboard','comprobantes','clientes','proveedores','stock','pedidos','ventas'] },
-      { label:'Movimientos', items:['movmercaderia','movcaja','produccion','logistica'] },
-      { label:'Administración', items:['tesoreria','contabilidad','impuestos','cobranzas','ctacte','compras_tesoreria','obras','activosfijos'] },
+      { label:'Movimientos', items:['movmercaderia','movcaja'] },
+      { label:'Administración', items:['tesoreria','contabilidad','impuestos','cobranzas','ctacte','compras_tesoreria','obras'] },
       { label:'RRHH', items:['rrhh'] },
-      { label:'Comercio Exterior', items:['ecommerce','crm'] },
-      { label:'Sistema', items:['geografia','schema','auxiliares','usuarios'] },
+      { label:'Sistema', items:['usuarios'] },
     ];
 
     let currentModule = 'dashboard', currentData = [];
@@ -335,21 +327,11 @@
         'rrhh/liquidaciones': [{key:'id',label:'ID'},{key:'nombre',label:'Nombre'},{key:'fecha',label:'Fecha'},{key:'tipo',label:'Tipo'},{key:'periodo_nombre',label:'Período'},{key:'apertura',label:'Apertura'},{key:'cierre',label:'Cierre'},{key:'fechapag',label:'Pago'}],
         'rrhh/novedades': [{key:'id',label:'ID'},{key:'empleado_nombre',label:'Empleado'},{key:'periodoid',label:'Período'}],
         'rrhh/conceptos': [{key:'id',label:'ID'},{key:'nombre',label:'Nombre'},{key:'tipo',label:'Tipo'},{key:'importe',label:'Importe',render:money},{key:'tipoliq',label:'TipoLiq'}],
-        'produccion/ordenes': [{key:'numero',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'proceso_nombre',label:'Proceso'},{key:'programa_nombre',label:'Programa'},{key:'obra_nombre',label:'Obra'},{key:'estadointerno',label:'Estado'}],
-        'produccion/procesos': [{key:'id',label:'ID'},{key:'nombre',label:'Nombre'},{key:'sector_nombre',label:'Sector'},{key:'tiempo',label:'Tiempo'},{key:'costo',label:'Costo',render:money}],
-        'logistica/rutas': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'},{key:'transporteid',label:'Transporte'},{key:'conductorid',label:'Conductor'},{key:'depositoid',label:'Depósito'},{key:'direccion',label:'Dirección'},{key:'localidad',label:'Localidad'}],
-        'logistica/hruta': [{key:'id',label:'ID'},{key:'ruta_nombre',label:'Ruta'},{key:'fecha',label:'Fecha'},{key:'estado_nombre',label:'Estado'},{key:'detalle',label:'Detalle'},{key:'volumen',label:'Volumen'},{key:'peso',label:'Peso'},{key:'transporteid',label:'Transporte'},{key:'conductorid',label:'Conductor'}],
-        'logistica/hrutai': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'}],
-        'logistica/hestados': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'},{key:'accion',label:'Acción'}],
-        'logistica/rutaclientes': [{key:'id',label:'ID'},{key:'ruta_nombre',label:'Ruta'},{key:'cli_nombre',label:'Cliente'},{key:'detalle',label:'Detalle'},{key:'orden',label:'Orden'},{key:'activo',label:'Activo'}],
-        'logistica/rutadocs': [{key:'id',label:'ID'},{key:'ruta_nombre',label:'Ruta'},{key:'documentoid',label:'Documento'},{key:'detalle',label:'Detalle'},{key:'clase',label:'Clase'}],
-        'logistica/configdocs': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'},{key:'codigo',label:'Código'}],
-        'logistica/camiones': [{key:'codigo',label:'Cód'},{key:'patente',label:'Patente'},{key:'detalle',label:'Detalle'},{key:'chofer',label:'Chofer'},{key:'chasis',label:'Chasis'},{key:'tara',label:'Tara'},{key:'cargamax',label:'Carga Max'}],
-        'logistica/choferes': [{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'documento',label:'Doc'},{key:'camion',label:'Camión'}],
-        'logistica/despachos': [{key:'codigo',label:'Cód'},{key:'numero',label:'Nro'},{key:'detalle',label:'Detalle'},{key:'fembarque',label:'Embarca'},{key:'fpartida',label:'Partida'},{key:'farribo',label:'Arriba'},{key:'buque',label:'Buque'},{key:'carpeta',label:'Carpeta'},{key:'flete',label:'Flete'}],
+
+
         'obras/licitaciones': [{key:'licitacion',label:'Licitación'},{key:'fecha',label:'Fecha'},{key:'obra_nombre',label:'Obra'},{key:'tipo_nombre',label:'Tipo'},{key:'estado_nombre',label:'Estado'},{key:'expediente',label:'Expediente'},{key:'presup_imp',label:'Presup',render:money}],
         'obras/polizas': [{key:'poliza',label:'Póliza'},{key:'asegura',label:'Aseguradora'},{key:'fechaemi',label:'Emisión'},{key:'fechaven',label:'Venc'},{key:'obra_nombre',label:'Obra'},{key:'suma_imp',label:'Suma',render:money},{key:'estado_nombre',label:'Estado'}],
-        'ecommerce/productos': [{key:'nombre',label:'Nombre'},{key:'stock_detalle',label:'Artículo'},{key:'precio',label:'Precio',render:money},{key:'categoria_nombre',label:'Categoría'},{key:'tipo_nombre',label:'Tipo'},{key:'estado_nombre',label:'Estado'},{key:'moneda',label:'Moneda'}],
+
         'impuestos/percepciones': [{key:'id',label:'ID',render:v=>v?v.substring(0,8):''},{key:'label',label:'Nombre'},{key:'alicuota',label:'Alic %',render:v=>v?`${v}%`:''},{key:'tipo_nombre',label:'Tipo'},{key:'jurisdiccion',label:'Jurisd.'},{key:'modulo',label:'Módulo'},{key:'padron',label:'Padrón'}],
         'impuestos/retenciones': [{key:'id',label:'ID',render:v=>v?v.substring(0,8):''},{key:'label',label:'Retención'},{key:'campo',label:'Campo'},{key:'tipo',label:'Tipo'},{key:'modulo',label:'Módulo'},{key:'alicuotaprov',label:'AlicProv'}],
         'impuestos/ivare': [{key:'codigo',label:'Cód'},{key:'detalle',label:'Detalle'},{key:'clase',label:'Clase'},{key:'civa',label:'CIVA'}],
@@ -373,8 +355,7 @@
         'maestros/plancuentas': [{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'imputable',label:'Imputable'},{key:'agrupa',label:'Agrupa'},{key:'nivel',label:'Nivel'},{key:'cencos',label:'C.Costo'},{key:'presupuestario',label:'Presup'}],
         'ctacte/resumen': [{key:'cliente',label:'Cód'},{key:'nombre',label:'Cliente'},{key:'cuit',label:'CUIT'},{key:'debe_total',label:'Debe',render:money},{key:'haber_total',label:'Haber',render:money},{key:'saldo_actual',label:'Saldo',render:v=>`<span class="${v<0?'text-success':'text-danger'}">${money(v)}</span>`},{key:'vencido',label:'Vencido',render:money},{key:'credito',label:'Límite',render:money},{key:'ultimo_mov',label:'Últ.Mov'}],
         'ctacte/detalle': [{key:'fecha',label:'Fecha'},{key:'codigo',label:'Tipo'},{key:'comp',label:'Comp'},{key:'debe',label:'Debe',render:money},{key:'haber',label:'Haber',render:money},{key:'saldo_parcial',label:'Saldo',render:v=>`<span class="${v<0?'text-success':'text-danger'}">${money(v)}</span>`},{key:'fechaven',label:'Venc'},{key:'tipo_nombre',label:'Nombre'}],
-        'crm/incidentes': [{key:'numero',label:'Nro'},{key:'fecha',label:'Fecha'},{key:'descripcion',label:'Descripción'},{key:'cliente_nombre',label:'Cliente'},{key:'estado_nombre',label:'Estado'},{key:'tipo_nombre',label:'Tipo'},{key:'grupo_nombre',label:'Grupo'}],
-        'activosfijos/bienes': [{key:'id',label:'ID'},{key:'detalle',label:'Detalle'},{key:'serie',label:'Serie'},{key:'articulo_detalle',label:'Artículo'},{key:'clase_nombre',label:'Clase'},{key:'fechaalta',label:'Alta'},{key:'valorcompra',label:'Valor',render:money},{key:'estado',label:'Estado',render:v=>v===1?'Activo':'Baja'}],
+
       };
       return MAP[ep];
     }
@@ -693,28 +674,6 @@
         ];
         const epMap = {empleados:'rrhh/empleados',liquidaciones:'rrhh/liquidaciones',novedades:'rrhh/novedades',conceptos:'rrhh/conceptos',areas:'rrhh/areas',puestos:'rrhh/puestos',obrasociales:'rrhh/obrasociales',sindicatos:'rrhh/sindicatos',periodos:'rrhh/periodos'};
         renderTabs(tabs,'empleados',tid=>tabContent(epMap,tid,'RRHH'));
-      },
-      produccion: () => {
-        const tabs = [{id:'ordenes',label:'Órdenes'},{id:'procesos',label:'Procesos'},{id:'programas',label:'Programas'},{id:'sectores',label:'Sectores'},{id:'partes',label:'Partes'},{id:'alternativas',label:'Alternativas'}];
-        const epMap = {ordenes:'produccion/ordenes',procesos:'produccion/procesos',programas:'produccion/programas',sectores:'produccion/sectores',partes:'produccion/partes',alternativas:'produccion/alternativas'};
-        renderTabs(tabs,'ordenes',tid=>tabContent(epMap,tid,'Producción'));
-      },
-      logistica: () => {
-        const tabs = [
-          {id:'rutas',label:'Rutas'},{id:'hruta',label:'Historial Rutas'},
-          {id:'hrutai',label:'Items Ruta'},{id:'hestados',label:'Estados Ruta'},
-          {id:'rutaclientes',label:'Ruta-Clientes'},{id:'rutadocs',label:'Docs Ruta'},
-          {id:'configdocs',label:'Config Docs'},{id:'camiones',label:'Camiones'},
-          {id:'choferes',label:'Choferes'},{id:'despachos',label:'Despachos'}
-        ];
-        const epMap = {
-          rutas:'logistica/rutas',hruta:'logistica/hruta',hrutai:'logistica/hrutai',
-          hestados:'logistica/hestados',rutaclientes:'logistica/rutaclientes',
-          rutadocs:'logistica/rutadocs',configdocs:'logistica/configdocs',
-          camiones:'logistica/camiones',choferes:'logistica/choferes',
-          despachos:'logistica/despachos'
-        };
-        renderTabs(tabs,'rutas',tid=>tabContent(epMap,tid,'Logística'));
       },
       tesoreria: async () => {
         const tabs = [
@@ -1151,16 +1110,8 @@
         const colsMap = {licitaciones:epCols('obras/licitaciones'),polizas:epCols('obras/polizas'),obras:[{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'direccion',label:'Dirección'},{key:'localidad',label:'Localidad'}]};
         renderTabs(tabs,'licitaciones',tid=>tabContent(epMap,tid,'Obras y Licitaciones'));
       },
-      activosfijos: () => {
-        const tabs = [{id:'bienes',label:'Bienes'},{id:'clases',label:'Clases'},{id:'metodos',label:'Mét.Amort'},{id:'mantenimiento',label:'Mantenimiento'}];
-        const epMap = {bienes:'activosfijos/bienes',clases:'activosfijos/clases',metodos:'activosfijos/metodosamort',mantenimiento:'activosfijos/mantenimiento'};
-        renderTabs(tabs,'bienes',tid=>tabContent(epMap,tid,'Activos Fijos'));
-      },
-      ecommerce: () => {
-        const tabs = [{id:'productos',label:'Productos'},{id:'categorias',label:'Categorías'},{id:'tipos',label:'Tipos'},{id:'combos',label:'Combos'},{id:'mlcats',label:'ML Categorías'}];
-        const epMap = {productos:'ecommerce/productos',categorias:'ecommerce/categorias',tipos:'ecommerce/tipos',combos:'ecommerce/combos',mlcats:'ecommerce/mlcategories'};
-        renderTabs(tabs,'productos',tid=>tabContent(epMap,tid,'E-Commerce'));
-      },
+
+
       crm: () => {
         const tabs = [{id:'incidentes',label:'Incidentes'},{id:'novedades',label:'Novedades'},{id:'seguimiento',label:'Seguimiento'},{id:'circuitos',label:'Circuitos'},{id:'etapas',label:'Etapas'},{id:'proyectos',label:'CRM Proyectos'}];
         const epMap = {incidentes:'crm/incidentes',novedades:'crm/novedades',seguimiento:'crm/seguimiento',circuitos:'crm/circuitos',etapas:'crm/etapas',proyectos:'crm/crmproyectos'};
