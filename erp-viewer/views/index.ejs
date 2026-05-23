@@ -868,7 +868,10 @@
         ],d,'stockid');}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
       },
       pedidos: async () => {
-        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-cart"></i>Pedidos</h4></div>
+        let pdCache = null;
+
+        function pdHTML() {
+          return `<div class="module-header"><h4><i class="bi bi-cart"></i>Pedidos</h4></div>
           <div class="row g-2 mb-3 align-items-center">
             <div class="col-md-5"><div class="input-group input-group-sm">
               <input type="text" class="form-control" id="pdS" placeholder="Buscar: nro, cliente...">
@@ -879,83 +882,105 @@
             <div class="col-md-1"><select class="form-select form-select-sm" id="pdL"><option value="100">100</option><option value="500" selected>500</option></select></div>
           </div>
           <div id="pdR"></div>`;
+        }
+
+        $('app-content').innerHTML = pdHTML();
 
         window.loadPD = async () => {
           const r = $('pdR'); if (!r) return;
-          r.innerHTML = renderLoading();
           const p = new URLSearchParams();
           const s = $('pdS')?.value; if (s) p.set('search', s);
           const fd = $('pdD')?.value; if (fd) p.set('desde', fd);
           const fh = $('pdH')?.value; if (fh) p.set('hasta', fh);
           p.set('limit', $('pdL')?.value || '500');
+          const cacheKey = p.toString();
+          if (pdCache && pdCache.key === cacheKey) { r.innerHTML = pdCache.html; return; }
+          r.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
           try {
-            const d = await API.get(`/api/pedidos/grupos?${p.toString()}`);
+            const d = await API.get(`/api/pedidos/grupos?${cacheKey}`);
+            const total = d.length;
+            const rows = [];
+            for (let i = 0; i < total; i++) {
+              const r2 = d[i];
+              const n = esc(r2.numero);
+              const badge = r2.mov_count > 0
+                ? `<span class="badge bg-success">${r2.mov_count}</span>`
+                : '<span class="badge bg-secondary">0</span>';
+              rows.push(`<tr class="row-click" onclick="showPDDetalle('${n}')">
+                <td><strong>${n}</strong></td>
+                <td>${r2.fecha ? r2.fecha.substring(0,10) : ''}</td>
+                <td>${esc(r2.cli_nombre||'')}</td>
+                <td><span class="badge bg-primary">${r2.items}</span></td>
+                <td>${Number(r2.total_cant||0).toFixed(2)}</td>
+                <td>${money(r2.total)}</td>
+                <td>${esc(r2.estado||'')}</td>
+                <td>${badge}</td></tr>`);
+            }
             let h = `<div class="card"><div class="card-header d-flex justify-content-between">
-              <span>Pedidos agrupados</span><span class="text-muted small">${d.length} pedidos</span></div>
+              <span>Pedidos agrupados</span><span class="text-muted small">${total} pedidos</span></div>
               <div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
               <th>Nro</th><th>Fecha</th><th>Cliente</th><th>Artículos</th><th>Cantidad</th><th>Total</th><th>Estado</th><th>Mov.</th></tr></thead><tbody>`;
-            d.forEach(r => {
-              h += `<tr class="row-click" onclick="showPDDetalle('${esc(r.numero)}')">
-                <td><strong>${esc(r.numero)}</strong></td>
-                <td>${r.fecha?r.fecha.substring(0,10):''}</td>
-                <td>${esc(r.cli_nombre||'')}</td>
-                <td><span class="badge bg-primary">${r.items}</span></td>
-                <td>${fmt(Number(r.total_cant||0),2)}</td>
-                <td>${money(r.total)}</td>
-                <td>${esc(r.estado||'')}</td>
-                <td>${r.mov_count>0?`<a href="#" onclick="event.stopPropagation();showPDMov('${esc(r.numero)}')"><span class="badge bg-success">${r.mov_count}</span></a>`:'<span class="badge bg-secondary">0</span>'}</td></tr>`;
-            });
-            h += `</tbody></table></div></div></div>`;
-            if (d.length >= 500) h += '<p class="text-muted small px-3 pb-2">Mostrando hasta 500 pedidos</p>';
+            h += rows.join('') + '</tbody></table></div></div>';
+            if (total >= 500) h += '<p class="text-muted small px-3 pb-2">Mostrando hasta 500 pedidos</p>';
+            pdCache = { key:cacheKey, html:h };
             r.innerHTML = h;
           } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
         };
 
-        window.clearPD = () => { ['pdS','pdD','pdH'].forEach(id=>{const e=$(id);if(e)e.value='';}); loadPD(); };
+        window.clearPD = () => {
+          ['pdS','pdD','pdH'].forEach(id=>{const e=$(id);if(e)e.value='';});
+          pdCache = null;
+          loadPD();
+        };
 
         window.showPDDetalle = async (numero) => {
           $('modalTitle').innerHTML = `<i class="bi bi-cart me-2"></i>Pedido N° ${esc(numero)}`;
-          $('modalBody').innerHTML = renderLoading();
+          $('modalBody').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
           bootstrap.Modal.getOrCreateInstance('#detalleModal').show();
           try {
-            const d = await API.get(`/api/pedidos/grupos/${encodeURIComponent(numero)}`);
-            let h = `<div class="card mb-3"><div class="card-header">${d[0]?.cli_nombre?esc(d[0].cli_nombre):''} - ${d.length} artículos</div>
+            const enc = encodeURIComponent(numero);
+            const [d, movs] = await Promise.all([
+              API.get(`/api/pedidos/grupos/${enc}`),
+              API.get(`/api/pedidos/grupos/${enc}/movimientos`).catch(()=>[])
+            ]);
+            const parts = [];
+            const cli = d[0]?.cli_nombre ? esc(d[0].cli_nombre) : '';
+            parts.push(`<div class="card mb-3"><div class="card-header">${cli}${cli?' - ':''}${d.length} artículos</div>
               <div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
-              <th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th>Estado</th><th>Cumplido</th></tr></thead><tbody>`;
-            d.forEach(r => {
-              h += `<tr>
-                <td>${esc(r.art_detalle||r.articulo)}</td>
-                <td>${fmt(Number(r.cantidad||0),2)}</td>
-                <td>${money(r.precio)}</td>
-                <td>${money(Number(r.cantidad||0)*Number(r.precio||0))}</td>
-                <td>${esc(r.estado||'')}</td>
-                <td>${esc(r.cumplido||'')}</td></tr>`;
-            });
-            h += `</tbody></table></div></div></div>`;
-            const movs = await API.get(`/api/pedidos/grupos/${encodeURIComponent(numero)}/movimientos`);
-            if (movs.length>0) {
-              h += `<div class="card"><div class="card-header">Mov. Mercadería vinculados (${movs.length})</div>
-                <div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
-                <th>Remito</th><th>Fecha</th><th>Artículo</th><th>Cantidad</th><th>Depósito</th><th>Tipo</th></tr></thead><tbody>`;
-              movs.forEach(m => {
-                h += `<tr>
-                  <td>${esc(m.remito||'')}</td>
-                  <td>${m.fecha?m.fecha.substring(0,10):''}</td>
-                  <td>${esc(m.art_detalle||m.stockid)}</td>
-                  <td>${fmt(Number(m.cantidad||0),2)}</td>
-                  <td>${esc(m.deposito||'')}</td>
-                  <td>${esc(m.tipomov||'')}</td></tr>`;
-              });
-              h += `</tbody></table></div></div></div>`;
+              <th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th>Estado</th><th>Cumplido</th></tr></thead><tbody>`);
+            for (let i = 0; i < d.length; i++) {
+              const r2 = d[i];
+              const subtotal = Number(r2.cantidad||0) * Number(r2.precio||0);
+              parts.push(`<tr>
+                <td>${esc(r2.art_detalle||r2.articulo)}</td>
+                <td>${Number(r2.cantidad||0).toFixed(2)}</td>
+                <td>${money(r2.precio)}</td>
+                <td>${money(subtotal)}</td>
+                <td>${esc(r2.estado||'')}</td>
+                <td>${esc(r2.cumplido||'')}</td></tr>`);
             }
-            $('modalBody').innerHTML = h;
+            parts.push('</tbody></table></div></div></div>');
+            if (movs.length > 0) {
+              parts.push(`<div class="card"><div class="card-header">Mov. Mercadería vinculados (${movs.length})</div>
+                <div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
+                <th>Remito</th><th>Fecha</th><th>Artículo</th><th>Cantidad</th><th>Depósito</th><th>Tipo</th></tr></thead><tbody>`);
+              for (let i = 0; i < movs.length; i++) {
+                const m = movs[i];
+                parts.push(`<tr>
+                  <td>${esc(m.remito||'')}</td>
+                  <td>${m.fecha ? m.fecha.substring(0,10) : ''}</td>
+                  <td>${esc(m.art_detalle||'')}</td>
+                  <td>${Number(m.cantidad||0).toFixed(2)}</td>
+                  <td>${esc(m.deposito||'')}</td>
+                  <td>${esc(m.tipomov||'')}</td></tr>`);
+              }
+              parts.push('</tbody></table></div></div></div>');
+            }
+            $('modalBody').innerHTML = parts.join('');
           } catch(e) { $('modalBody').innerHTML = `<div class="alert alert-danger mb-0">${e.error||e.message}</div>`; }
         };
 
-        window.showPDMov = async (numero) => {
-          showPDDetalle(numero);
-        };
-
+        window.showPDMov = showPDDetalle;
         loadPD();
       },
       movmercaderia: async () => {
