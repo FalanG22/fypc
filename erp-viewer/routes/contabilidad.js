@@ -23,7 +23,7 @@ router.get('/plancuentas', async (req, res) => {
 router.get('/asientos', async (req, res) => {
   try {
     const { search, desde, hasta, limit } = req.query;
-    let sql = `SELECT * FROM transacasientos`;
+    let sql = `SELECT *, CASE WHEN tipo='D' THEN importe ELSE 0 END as debe, CASE WHEN tipo='H' THEN importe ELSE 0 END as haber FROM transacasientos`;
     const conditions = [];
     const params = [];
     if (search) {

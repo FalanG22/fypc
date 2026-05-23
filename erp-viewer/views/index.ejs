@@ -1116,12 +1116,12 @@
               <li class="nav-item"><a class="nav-link active" href="#" data-tab="asi">Asientos</a></li>
               <li class="nav-item"><a class="nav-link" href="#" data-tab="cta">Cuentas</a></li>
               <li class="nav-item"><a class="nav-link" href="#" data-tab="plan">Plan de Cuentas</a></li>
-            </ul><div id="ctabc">${buildTable([{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'dato',label:'Cuenta'},{key:'leyenda',label:'Leyenda'},{key:'importe',label:'Importe',render:money},{key:'tipo',label:'Tipo'},{key:'modulo',label:'Módulo'}],asientos)}</div>`;
+            </ul><div id="ctabc">${buildTable([{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'dato',label:'Cuenta'},{key:'leyenda',label:'Leyenda'},{key:'debe',label:'Debe',render:money},{key:'haber',label:'Haber',render:money},{key:'modulo',label:'Módulo'}],asientos)}</div>`;
           document.querySelectorAll('#ctabs .nav-link').forEach(a=>{
             a.addEventListener('click',e=>{
               e.preventDefault(); document.querySelectorAll('#ctabs .nav-link').forEach(l=>l.classList.remove('active')); a.classList.add('active');
               const t=a.dataset.tab;
-              if(t==='asi')$('ctabc').innerHTML=buildTable([{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'dato',label:'Cuenta'},{key:'leyenda',label:'Leyenda'},{key:'importe',label:'Importe',render:money},{key:'tipo',label:'Tipo'},{key:'modulo',label:'Módulo'}],asientos);
+              if(t==='asi')$('ctabc').innerHTML=buildTable([{key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'dato',label:'Cuenta'},{key:'leyenda',label:'Leyenda'},{key:'debe',label:'Debe',render:money},{key:'haber',label:'Haber',render:money},{key:'modulo',label:'Módulo'}],asientos);
               else if(t==='cta')$('ctabc').innerHTML=buildTable([{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'imputable',label:'Imputable'},{key:'agrupa',label:'Agrupa'},{key:'cencos',label:'C.Costo'},{key:'nivel',label:'Nivel'}],cuentas);
               else if(t==='plan')$('ctabc').innerHTML=buildTable([{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'referencia',label:'Ref'},{key:'tipoplanid',label:'Tipo'},{key:'tiposaldo',label:'Saldo'},{key:'presupuestario',label:'Presup'}],plan);
             });
