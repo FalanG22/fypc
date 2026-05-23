@@ -530,11 +530,74 @@
         };
         loadMM();
       },
-      movcaja: () => renderSimple('movimientos/caja',[
-        {key:'fecha',label:'Fecha'},{key:'comp',label:'Comprobante'},{key:'detalle',label:'Detalle'},
-        {key:'cliente',label:'Cliente'},{key:'proveedor',label:'Proveedor'},{key:'cuenta',label:'Cuenta'},
-        {key:'banco_nombre',label:'Banco'},{key:'impentra',label:'Ingreso',render:money},{key:'impsale',label:'Egreso',render:money}
-      ],null,'Movimientos de Caja / Bancos','Buscar: comprobante, detalle...'),
+      movcaja: async () => {
+        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-cash"></i>Movimientos de Caja / Bancos</h4></div>
+          <div class="row g-2 mb-3 align-items-center">
+            <div class="col-md-5"><div class="input-group input-group-sm">
+              <input type="text" class="form-control" id="mcS" placeholder="Buscar: comprobante, cliente, proveedor...">
+              <button class="btn btn-primary" onclick="loadMC()"><i class="bi bi-search"></i></button>
+              <button class="btn btn-outline-secondary" onclick="clearMC()"><i class="bi bi-x-lg"></i></button></div></div>
+            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mcD"></div>
+            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="mcH"></div>
+            <div class="col-md-1"><select class="form-select form-select-sm" id="mcL"><option value="100">100</option><option value="500" selected>500</option></select></div>
+          </div>
+          <div id="mcR"></div>`;
+        window.loadMC = async () => {
+          const r = $('mcR'); if (!r) return;
+          r.innerHTML = renderLoading();
+          const p = new URLSearchParams();
+          const s = $('mcS')?.value; if (s) p.set('search', s);
+          const fd = $('mcD')?.value; if (fd) p.set('desde', fd);
+          const fh = $('mcH')?.value; if (fh) p.set('hasta', fh);
+          p.set('limit', $('mcL')?.value || '500');
+          try {
+            const d = await API.get(`/api/movimientos/caja?${p.toString()}`);
+            let h = `<div class="card"><div class="card-header d-flex justify-content-between">
+              <span>Comprobantes agrupados</span><span class="text-muted small">${d.length} comprobantes</span></div>
+              <div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
+              <th>Comprobante</th><th>Fecha</th><th>Cliente</th><th>Proveedor</th><th>Items</th><th>Ingreso</th><th>Egreso</th><th>Banco</th></tr></thead><tbody>`;
+            d.forEach(r => {
+              h += `<tr class="row-click" onclick="showMCDetalle('${esc(r.comp)}')">
+                <td><strong>${esc(r.comp)}</strong></td>
+                <td>${r.fecha?r.fecha.substring(0,10):''}</td>
+                <td>${esc(r.cliente_nombre||r.cliente)}</td>
+                <td>${esc(r.proveedor_nombre||r.proveedor)}</td>
+                <td><span class="badge bg-primary">${r.items}</span></td>
+                <td class="text-success fw-semibold">${r.total_ingreso?money(r.total_ingreso):''}</td>
+                <td class="text-danger fw-semibold">${r.total_egreso?money(r.total_egreso):''}</td>
+                <td>${esc(r.banco_nombre)}</td></tr>`;
+            });
+            h += `</tbody></table></div></div></div>`;
+            if (d.length >= 500) h += '<p class="text-muted small px-3 pb-2">Mostrando hasta 500 comprobantes</p>';
+            r.innerHTML = h;
+          } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+        window.clearMC = () => { ['mcS','mcD','mcH'].forEach(id=>{const e=$(id);if(e)e.value='';}); loadMC(); };
+        window.showMCDetalle = async (comp) => {
+          $('modalTitle').innerHTML = `<i class="bi bi-receipt me-2"></i>Comprobante: ${esc(comp)}`;
+          $('modalBody').innerHTML = renderLoading();
+          bootstrap.Modal.getOrCreateInstance('#detalleModal').show();
+          try {
+            const d = await API.get(`/api/movimientos/caja/grupos/${encodeURIComponent(comp)}`);
+            let h = `<div class="card"><div class="card-header">${d.length} líneas únicas</div><div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
+              <th>Detalle</th><th>Cuenta</th><th>Cliente</th><th>Proveedor</th><th>Banco</th><th>Ingreso</th><th>Egreso</th><th>Fecha</th></tr></thead><tbody>`;
+            d.forEach(r => {
+              h += `<tr>
+                <td>${esc(r.detalle)}${r.renglones>1?` <span class="badge bg-secondary">${r.renglones}x</span>`:''}</td>
+                <td>${esc(r.cuenta)}</td>
+                <td>${esc(r.cliente_nombre||r.cliente)}</td>
+                <td>${esc(r.proveedor_nombre||r.proveedor)}</td>
+                <td>${esc(r.banco_nombre)}</td>
+                <td class="text-success fw-semibold">${r.total_ingreso?money(r.total_ingreso):''}</td>
+                <td class="text-danger fw-semibold">${r.total_egreso?money(r.total_egreso):''}</td>
+                <td>${r.fecha?r.fecha.substring(0,10):''}</td></tr>`;
+            });
+            h += `</tbody></table></div></div></div>`;
+            $('modalBody').innerHTML = h;
+          } catch(e) { $('modalBody').innerHTML = `<div class="alert alert-danger mb-0">${e.error||e.message}</div>`; }
+        };
+        loadMC();
+      },
       rrhh: () => {
         const tabs = [
           {id:'empleados',label:'Empleados'},{id:'liquidaciones',label:'Liquidaciones'},
