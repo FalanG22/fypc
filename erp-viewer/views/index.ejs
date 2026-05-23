@@ -514,11 +514,11 @@
           bootstrap.Modal.getOrCreateInstance('#detalleModal').show();
           try {
             const d = await API.get(`/api/movimientos/mercaderia/grupos/${encodeURIComponent(remito)}`);
-            let h = `<div class="card"><div class="card-header">${d.length} artículos</div><div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
+            let h = `<div class="card"><div class="card-header">${d.length} artículos únicos</div><div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
               <th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Depósito</th><th>Tipo</th><th>Fecha</th></tr></thead><tbody>`;
             d.forEach(r => {
               h += `<tr>
-                <td>${esc(r.art_detalle||r.stockid)}</td>
+                <td>${esc(r.art_detalle||r.stockid)}${r.renglones>1?` <span class="badge bg-secondary">${r.renglones}x</span>`:''}</td>
                 <td>${fmt(Number(r.cantidad||0),2)}</td>
                 <td>${money(r.precio)}</td>
                 <td>${esc(r.deposito)}</td>

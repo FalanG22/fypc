@@ -78,11 +78,15 @@ router.get('/mercaderia/grupos', async (req, res) => {
 router.get('/mercaderia/grupos/:remito', async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT m.*, s.detalle as art_detalle
+      `SELECT m.stockid, MAX(s.detalle) as art_detalle, SUM(m.cantidad) as cantidad,
+              AVG(m.precio) as precio, MAX(m.deposito) as deposito,
+              MAX(m.tipomov) as tipomov, MIN(m.fecha) as fecha,
+              COUNT(*) as renglones
        FROM movmer m
        LEFT JOIN stock s ON m.stockid = s.stockid
        WHERE m.remito = $1
-       ORDER BY m.movmerid`,
+       GROUP BY m.stockid
+       ORDER BY MIN(m.movmerid)`,
       [req.params.remito]
     );
     res.json(result.rows);
