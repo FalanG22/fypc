@@ -491,7 +491,7 @@
 
     let sortGlob = { col: '', dir: 'asc', fn: null };
 
-    function buildSortableTable(cols, data) {
+    function buildSortableTable(cols, data, limit) {
       if (!data||!data.length) return '<div class="alert alert-info m-3">Sin resultados</div>';
       let h = '<div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>';
       cols.forEach(c => {
@@ -518,7 +518,7 @@
         h += '</tr>';
       });
       h += '</tbody></table></div>';
-      if (data.length >= 500) h += '<p class="text-muted small px-3 pb-2">Mostrando hasta 500 registros</p>';
+      if (limit && data.length >= limit) h += `<p class="text-muted small px-3 pb-2">Mostrando hasta ${limit} registros</p>`;
       return h;
     }
 
@@ -528,7 +528,7 @@
       loadCobTab();
     };
 
-    function buildTable(cols, data, rowKey) {
+    function buildTable(cols, data, rowKey, limit) {
       if (!data||!data.length) return '<div class="alert alert-info m-3">Sin resultados</div>';
       let h = '<div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>';
       cols.forEach(c => { h+=`<th>${c.label}</th>`; });
@@ -544,7 +544,7 @@
         h+='</tr>';
       });
       h+='</tbody></table></div>';
-      if(data.length>=500) h+='<p class="text-muted small px-3 pb-2">Mostrando hasta 500 registros</p>';
+      if (limit && data.length >= limit) h+=`<p class="text-muted small px-3 pb-2">Mostrando hasta ${limit} registros</p>`;
       return h;
     }
 
@@ -584,7 +584,8 @@
     function renderSimple(endpoint, cols, rowKey, title, placeholder) {
       $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-${MODULES[currentModule]?.icon||'table'}"></i>${title}</h4>${XLS_BTN}</div>${buildSearchInput(placeholder||'Buscar...')}<div id="r"></div>`;
       const r=$('r'); r.innerHTML=renderLoading();
-      API.get(`/api/${endpoint}?${sp()}`).then(d=>{currentData=d;r.innerHTML=buildTable(cols,d,rowKey);}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
+      const lim = parseInt($('lim')?.value) || 500;
+      API.get(`/api/${endpoint}?${sp()}`).then(d=>{currentData=d;r.innerHTML=buildTable(cols,d,rowKey,lim);}).catch(e=>{r.innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;});
     }
 
     function loadModule(mod) {
@@ -939,7 +940,8 @@
               <div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
               <th>Nro</th><th>Fecha</th><th>Cliente</th><th>Artículos</th><th>Cantidad</th><th>Total</th><th>Estado</th><th>Mov.</th></tr></thead><tbody>`;
             h += rows.join('') + '</tbody></table></div></div>';
-            if (total >= 500) h += '<p class="text-muted small px-3 pb-2">Mostrando hasta 500 pedidos</p>';
+            const pdLim = parseInt($('pdL')?.value) || 500;
+            if (pdLim && total >= pdLim) h += `<p class="text-muted small px-3 pb-2">Mostrando hasta ${pdLim} pedidos</p>`;
             pdCache = { key:cacheKey, html:h };
             r.innerHTML = h;
           } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
@@ -1036,7 +1038,8 @@
                 <td>${fmt(Number(r.total_cant||0),2)}</td></tr>`;
             });
             h += `</tbody></table></div></div></div>`;
-            if (d.length >= 500) h += '<p class="text-muted small px-3 pb-2">Mostrando hasta 500 remitos</p>';
+            const mmLim = parseInt($('mmL')?.value) || 500;
+            if (mmLim && d.length >= mmLim) h += `<p class="text-muted small px-3 pb-2">Mostrando hasta ${mmLim} remitos</p>`;
             r.innerHTML = h;
           } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
         };
@@ -1103,7 +1106,8 @@
                 <td>${esc(r.banco_nombre)}</td></tr>`;
             });
             h += `</tbody></table></div></div></div>`;
-            if (d.length >= 500) h += '<p class="text-muted small px-3 pb-2">Mostrando hasta 500 comprobantes</p>';
+            const mcLim = parseInt($('mcL')?.value) || 500;
+            if (mcLim && d.length >= mcLim) h += `<p class="text-muted small px-3 pb-2">Mostrando hasta ${mcLim} comprobantes</p>`;
             r.innerHTML = h;
           } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
         };
@@ -1238,7 +1242,7 @@
             const d = await API.get(`/api/${curTab.ep}?${p.toString()}`);
             r.innerHTML = `<div class="card"><div class="card-header d-flex justify-content-between">
               <span>${curTab.label}</span><span class="text-muted small">${d.length} registros</span></div>
-              <div class="card-body p-0">${buildSortableTable(curTab.cols, d)}</div></div>`;
+              <div class="card-body p-0">${buildSortableTable(curTab.cols, d, parseInt($('cobL')?.value)||500)}</div></div>`;
           } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
         };
 
