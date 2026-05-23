@@ -50,4 +50,45 @@ router.get('/caja', async (req, res) => {
   }
 });
 
+router.get('/mercaderia/grupos', async (req, res) => {
+  try {
+    const { search, desde, hasta, limit } = req.query;
+    let sql = `SELECT remito, MIN(fecha) as fecha, cliente,
+               COUNT(*) as items, SUM(cantidad) as total_cant,
+               MAX(factura) as factura
+               FROM movmer`;
+    const conditions = [];
+    const params = [];
+    if (search) {
+      conditions.push(`(remito ILIKE $${params.length+1} OR cliente ILIKE $${params.length+1} OR factura ILIKE $${params.length+1})`);
+      params.push(`%${search}%`);
+    }
+    if (desde) { conditions.push(`fecha >= $${params.length+1}`); params.push(desde); }
+    if (hasta) { conditions.push(`fecha <= $${params.length+1}`); params.push(hasta); }
+    if (conditions.length > 0) sql += ` WHERE ` + conditions.join(' AND ');
+    sql += ` GROUP BY remito, cliente ORDER BY MIN(fecha) DESC LIMIT $${params.length+1}`;
+    params.push(parseInt(limit) || 500);
+    const result = await db.query(sql, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/mercaderia/grupos/:remito', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT m.*, s.detalle as art_detalle
+       FROM movmer m
+       LEFT JOIN stock s ON m.stockid = s.stockid
+       WHERE m.remito = $1
+       ORDER BY m.movmerid`,
+      [req.params.remito]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
