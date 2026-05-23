@@ -4,7 +4,7 @@ const db = require('../db');
 
 router.get('/ordenespago', async (req, res) => {
   try {
-    const { search, desde, hasta, limit } = req.query;
+    const { search, desde, hasta, limit, offset } = req.query;
     let sql = `SELECT p.promoviid, p.clase, p.codigo, p.comp, p.fecha, p.fechaven,
                p.nombre, p.cuit, p.neto, p.iva, p.percepcion, p.retencion,
                (COALESCE(p.neto,0)+COALESCE(p.iva,0)+COALESCE(p.percepcion,0)+COALESCE(p.retencion,0)) as total,
@@ -22,8 +22,8 @@ router.get('/ordenespago', async (req, res) => {
     if (desde) { conditions.push(`p.fecha >= $${params.length+1}`); params.push(desde); }
     if (hasta) { conditions.push(`p.fecha <= $${params.length+1}`); params.push(hasta); }
     if (conditions.length > 0) sql += ` AND ` + conditions.join(' AND ');
-    sql += ` ORDER BY p.fecha DESC LIMIT $${params.length+1}`;
-    params.push(parseInt(limit) || 500);
+    sql += ` ORDER BY p.fecha DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const r = await db.query(sql, params);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -99,7 +99,7 @@ router.get('/ordenespago/:id/aplicacion', async (req, res) => {
 
 router.get('/egresos', async (req, res) => {
   try {
-    const { search, desde, hasta, limit } = req.query;
+    const { search, desde, hasta, limit, offset } = req.query;
     let sql = `SELECT cm.cajamovid, cm.fecha, cm.comp, cm.detalle, cm.impentra, cm.impsale,
                cm.cliente, cm.proveedor, cm.cuenta, cm.banco, cm.numcheque, cm.tipo,
                cm.moneda, cm.cotizacionid, cm.estadoreg, cm.chequeraid,
@@ -115,8 +115,8 @@ router.get('/egresos', async (req, res) => {
     if (desde) { conditions.push(`cm.fecha >= $${params.length+1}`); params.push(desde); }
     if (hasta) { conditions.push(`cm.fecha <= $${params.length+1}`); params.push(hasta); }
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(' AND ');
-    sql += ` ORDER BY cm.fecha DESC LIMIT $${params.length+1}`;
-    params.push(parseInt(limit) || 500);
+    sql += ` ORDER BY cm.fecha DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const r = await db.query(sql, params);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -124,7 +124,7 @@ router.get('/egresos', async (req, res) => {
 
 router.get('/comprobantescompra', async (req, res) => {
   try {
-    const { search, desde, hasta, limit } = req.query;
+    const { search, desde, hasta, limit, offset } = req.query;
     let sql = `SELECT m.moviid, m.clase, m.codigo, m.comp, m.fecha, m.fechaven,
                m.clienteid, m.cliente, m.nombre, m.cuit, m.neto, m.iva, m.exento, m.percepcion,
                (COALESCE(m.neto,0)+COALESCE(m.iva,0)+COALESCE(m.exento,0)+COALESCE(m.percepcion,0)) as total,
@@ -138,8 +138,8 @@ router.get('/comprobantescompra', async (req, res) => {
     if (desde) { conditions.push(`m.fecha >= $${params.length+1}`); params.push(desde); }
     if (hasta) { conditions.push(`m.fecha <= $${params.length+1}`); params.push(hasta); }
     if (conditions.length > 0) sql += ` AND ` + conditions.join(' AND ');
-    sql += ` ORDER BY m.fecha DESC LIMIT $${params.length+1}`;
-    params.push(parseInt(limit) || 500);
+    sql += ` ORDER BY m.fecha DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const r = await db.query(sql, params);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }

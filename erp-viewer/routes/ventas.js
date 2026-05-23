@@ -7,7 +7,7 @@ const DOC_VENTA = {F:'Factura A',FS:'Factura Servicios A',C:'N.Crédito A',CS:'N
 
 router.get('/', async (req, res) => {
   try {
-    const { search, desde, hasta, limit } = req.query;
+    const { search, desde, hasta, limit, offset } = req.query;
     let sql = `SELECT m.moviid, m.clase, m.codigo, m.comp, m.fecha, m.fechaven,
                m.clienteid, m.cliente, m.nombre, m.cuit, m.neto, m.iva, m.exento, m.percepcion,
                (COALESCE(m.neto,0)+COALESCE(m.iva,0)+COALESCE(m.exento,0)+COALESCE(m.percepcion,0)) as total,
@@ -21,8 +21,8 @@ router.get('/', async (req, res) => {
     if (desde) { conditions.push(`m.fecha >= $${params.length+1}`); params.push(desde); }
     if (hasta) { conditions.push(`m.fecha <= $${params.length+1}`); params.push(hasta); }
     if (conditions.length > 0) sql += ` AND ` + conditions.join(' AND ');
-    sql += ` ORDER BY m.fecha DESC LIMIT $${params.length+1}`;
-    params.push(parseInt(limit) || 500);
+    sql += ` ORDER BY m.fecha DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const r = await db.query(sql, params);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }

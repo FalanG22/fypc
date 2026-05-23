@@ -4,17 +4,18 @@ const db = require('../db');
 
 router.get('/', async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, limit, offset } = req.query;
     let sql = `SELECT c.*, p.nombre as provnom, pa.detalle as pagodet
                FROM clientes c
                LEFT JOIN provin p ON c.provincia = p.codigo
                LEFT JOIN pagos pa ON c.pago = pa.pago`;
     const params = [];
     if (search) {
-      sql += ` WHERE c.cliente ILIKE $1 OR c.nombre ILIKE $1 OR c.deno ILIKE $1 OR c.cuit ILIKE $1`;
+      sql += ` WHERE (c.cliente ILIKE $${params.length + 1} OR c.nombre ILIKE $${params.length + 1} OR c.deno ILIKE $${params.length + 1} OR c.cuit ILIKE $${params.length + 1})`;
       params.push(`%${search}%`);
     }
-    sql += ` ORDER BY c.nombre LIMIT 200`;
+    sql += ` ORDER BY c.nombre LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const result = await db.query(sql, params);
     res.json(result.rows);
   } catch (err) {

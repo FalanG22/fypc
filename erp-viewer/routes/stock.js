@@ -4,7 +4,7 @@ const db = require('../db');
 
 router.get('/', async (req, res) => {
   try {
-    const { search, rubro } = req.query;
+    const { search, rubro, limit, offset } = req.query;
     let sql = `SELECT s.*, r.nombre as rubro_nombre, l.nombre as linea_nombre
                FROM stock s
                LEFT JOIN rubros r ON s.rubro = r.codigo
@@ -20,7 +20,8 @@ router.get('/', async (req, res) => {
       params.push(rubro);
     }
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(' AND ');
-    sql += ` ORDER BY s.detalle LIMIT 200`;
+    sql += ` ORDER BY s.detalle LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const result = await db.query(sql, params);
     res.json(result.rows);
   } catch (err) {

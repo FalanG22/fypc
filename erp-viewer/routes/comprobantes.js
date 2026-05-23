@@ -4,7 +4,7 @@ const db = require('../db');
 
 router.get('/', async (req, res) => {
   try {
-    const { search, desde, hasta, limit } = req.query;
+    const { search, desde, hasta, limit, offset } = req.query;
     let sql = `
       SELECT m.moviid, m.clase, m.codigo, m.comp, m.fecha, m.clienteid,
              m.cliente, m.nombre, m.neto, m.iva, (COALESCE(m.neto,0)+COALESCE(m.iva,0)+COALESCE(m.exento,0)+COALESCE(m.percepcion,0)) as total,
@@ -32,8 +32,8 @@ router.get('/', async (req, res) => {
     if (conditions.length > 0) {
       sql += ` WHERE ` + conditions.join(' AND ');
     }
-    sql += ` ORDER BY m.fecha DESC LIMIT $${params.length + 1}`;
-    params.push(parseInt(limit) || 500);
+    sql += ` ORDER BY m.fecha DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
 
     const result = await db.query(sql, params);
     res.json(result.rows);

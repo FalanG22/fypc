@@ -4,7 +4,7 @@ const db = require('../db');
 
 router.get('/clientes', async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, limit, offset } = req.query;
     let sql = `SELECT c.clienteid, c.cliente, c.nombre, c.deno, c.cuit, c.domicilio, c.localidad,
                c.codpos, c.email, c.telefono, c.vendedor, c.lista, c.lista2, c.moneda,
                c.credito, c.credctacte, c.taxcond, c.descuento, c.pago, c.zona,
@@ -20,10 +20,11 @@ router.get('/clientes', async (req, res) => {
                LEFT JOIN c_cuentas cc ON c.ctaactivo = cc.codigo`;
     const params = [];
     if (search) {
-      sql += ` WHERE c.nombre ILIKE $1 OR c.cliente ILIKE $1 OR c.deno ILIKE $1 OR c.cuit ILIKE $1`;
+      sql += ` WHERE (c.nombre ILIKE $${params.length + 1} OR c.cliente ILIKE $${params.length + 1} OR c.deno ILIKE $${params.length + 1} OR c.cuit ILIKE $${params.length + 1})`;
       params.push(`%${search}%`);
     }
-    sql += ` ORDER BY c.nombre LIMIT 500`;
+    sql += ` ORDER BY c.nombre LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const r = await db.query(sql, params);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -51,7 +52,7 @@ router.get('/clientes/:id', async (req, res) => {
 
 router.get('/proveedores', async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, limit, offset } = req.query;
     let sql = `SELECT p.proveedor, p.nombre, p.deno, p.cuit, p.domicilio, p.localidad,
                p.codpos, p.telefono, p.ivare, p.moneda, p.saldo, p.fecha, p.estado,
                p.taxcond, p.pago, p.persona, p.cliente,
@@ -63,10 +64,11 @@ router.get('/proveedores', async (req, res) => {
                LEFT JOIN c_cuentas cc ON p.ctapasivo = cc.codigo`;
     const params = [];
     if (search) {
-      sql += ` WHERE p.nombre ILIKE $1 OR p.proveedor ILIKE $1 OR p.deno ILIKE $1 OR p.cuit ILIKE $1`;
+      sql += ` WHERE (p.nombre ILIKE $${params.length + 1} OR p.proveedor ILIKE $${params.length + 1} OR p.deno ILIKE $${params.length + 1} OR p.cuit ILIKE $${params.length + 1})`;
       params.push(`%${search}%`);
     }
-    sql += ` ORDER BY p.nombre LIMIT 500`;
+    sql += ` ORDER BY p.nombre LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const r = await db.query(sql, params);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -89,14 +91,15 @@ router.get('/proveedores/:id', async (req, res) => {
 
 router.get('/plancuentas', async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, limit, offset } = req.query;
     let sql = `SELECT cc.* FROM c_cuentas cc`;
     const params = [];
     if (search) {
-      sql += ` WHERE cc.nombre ILIKE $1 OR cc.codigo ILIKE $1`;
+      sql += ` WHERE (cc.nombre ILIKE $${params.length + 1} OR cc.codigo ILIKE $${params.length + 1})`;
       params.push(`%${search}%`);
     }
-    sql += ` ORDER BY cc.codigo LIMIT 500`;
+    sql += ` ORDER BY cc.codigo LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const r = await db.query(sql, params);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }

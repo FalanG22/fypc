@@ -4,7 +4,7 @@ const db = require('../db');
 
 router.get('/', async (req, res) => {
   try {
-    const { search, desde, hasta, limit } = req.query;
+    const { search, desde, hasta, limit, offset } = req.query;
     let sql = `SELECT p.pedidoid, p.codigo, p.numero, p.fecha, p.cliente, p.articulo,
                p.detalle, p.cantidad, p.precio, p.estado, p.moneda, p.cumplido,
                p.lugar, p.obs, s.detalle as art_detalle,
@@ -21,8 +21,8 @@ router.get('/', async (req, res) => {
     if (desde) { conditions.push(`p.fecha >= $${params.length + 1}`); params.push(desde); }
     if (hasta) { conditions.push(`p.fecha <= $${params.length + 1}`); params.push(hasta); }
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(' AND ');
-    sql += ` ORDER BY p.fecha DESC LIMIT $${params.length + 1}`;
-    params.push(parseInt(limit) || 500);
+    sql += ` ORDER BY p.fecha DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit) || 500, parseInt(offset) || 0);
     const result = await db.query(sql, params);
     res.json(result.rows);
   } catch (err) {
@@ -32,7 +32,7 @@ router.get('/', async (req, res) => {
 
 router.get('/grupos', async (req, res) => {
   try {
-    const { search, desde, hasta, limit } = req.query;
+    const { search, desde, hasta, limit, offset } = req.query;
     const l = Math.min(parseInt(limit) || 500, 1000);
     let sql = `SELECT p.numero, MIN(p.fecha) as fecha,
                p.cliente, MIN(c.nombre)::varchar as cli_nombre,
@@ -52,8 +52,8 @@ router.get('/grupos', async (req, res) => {
     if (desde) { conditions.push(`p.fecha >= $${params.length + 1}`); params.push(desde); }
     if (hasta) { conditions.push(`p.fecha <= $${params.length + 1}`); params.push(hasta); }
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(' AND ');
-    sql += ` GROUP BY p.numero, p.cliente ORDER BY fecha DESC LIMIT $${params.length + 1}`;
-    params.push(l);
+    sql += ` GROUP BY p.numero, p.cliente ORDER BY fecha DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(l, parseInt(offset) || 0);
     const result = await db.query(sql, params);
     res.json(result.rows);
   } catch (err) {
@@ -82,6 +82,7 @@ router.get('/grupos/:numero', async (req, res) => {
 
 router.get('/grupos/:numero/movimientos', async (req, res) => {
   try {
+    const { limit, offset } = req.query;
     const result = await db.query(`
       SELECT m.remito, m.fecha, m.cantidad, m.deposito,
              m.tipomov, COALESCE(s.detalle, m.stockid) as art_detalle
@@ -89,7 +90,7 @@ router.get('/grupos/:numero/movimientos', async (req, res) => {
       LEFT JOIN stock s ON s.stockid = m.stockid
       WHERE m.pedido = $1
       ORDER BY m.fecha DESC
-      LIMIT 100`, [req.params.numero]);
+      LIMIT $2 OFFSET $3`, [req.params.numero, parseInt(limit) || 100, parseInt(offset) || 0]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
