@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --sidebar-width: 230px;
@@ -409,6 +410,47 @@
     const fmt = (v,d) => v!=null&&v!=='' ? (d?Number(v).toFixed(d):v) : '';
     const money = v => v!=null ? `$${Number(v).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '';
 
+    function exportModuleExcel() {
+      const tables = document.querySelectorAll('#app-content table.table');
+      if (!tables.length) { alert('No hay datos para exportar'); return; }
+      const wb = XLSX.utils.book_new();
+      tables.forEach((t, i) => {
+        const name = t.id || `Hoja${i+1}`;
+        const ws = XLSX.utils.table_to_sheet(t, {raw: true});
+        XLSX.utils.book_append_sheet(wb, ws, name);
+      });
+      XLSX.writeFile(wb, `${currentModule||'export'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    function addExportBtn() {
+      document.querySelectorAll('#app-content .module-header h4, #app-content > h4').forEach(h4 => {
+        if (h4.querySelector('.btn-export-excel')) return;
+        h4.style.display = 'flex';
+        h4.style.alignItems = 'center';
+        h4.style.justifyContent = 'space-between';
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-outline-success btn-export-excel';
+        btn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Excel';
+        btn.onclick = e => { e.stopPropagation(); exportModuleExcel(); };
+        h4.appendChild(btn);
+      });
+      const tabs = document.querySelector('#app-content #tabs');
+      if (tabs && !tabs.parentElement.querySelector('.btn-export-excel')) {
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px';
+        const title = document.createElement('h5');
+        title.textContent = MODULES[currentModule]?.label||'';
+        title.style.margin = '0';
+        header.appendChild(title);
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-outline-success btn-export-excel';
+        btn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Excel';
+        btn.onclick = exportModuleExcel;
+        header.appendChild(btn);
+        tabs.parentElement.insertBefore(header, tabs);
+      }
+    }
+
     const MODULES = {
       dashboard: { icon:'speedometer2', label:'Dashboard' },
       comprobantes: { icon:'file-text', label:'Comprobantes' },
@@ -575,7 +617,7 @@
       document.querySelectorAll('.sidebar .nav-link').forEach(l=>l.classList.remove('active'));
       document.querySelector(`.nav-link[data-module="${mod}"]`)?.classList.add('active');
       const fn = MODULE_FUNCS[mod];
-      if (fn) fn();
+      if (fn) { fn(); setTimeout(addExportBtn, 50); }
       else $('app-content').innerHTML = '<div class="alert alert-warning">Módulo no implementado</div>';
     }
 
