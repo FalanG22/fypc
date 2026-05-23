@@ -631,14 +631,39 @@
         renderTabs(tabs,'rutas',tid=>tabContent(epMap,tid,'Logística'));
       },
       tesoreria: async () => {
-        $('app-content').innerHTML = renderLoading();
-        try {
-          const[bancos,cuentas,pagos]=await Promise.all([API.get('/api/tesoreria/bancos'),API.get('/api/tesoreria/cuentas'),API.get('/api/tesoreria/pagos')]);
-          $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-piggy-bank"></i>Tesorería</h4></div>
-            <div class="row"><div class="col-md-6"><div class="card"><div class="card-header">Bancos</div><div class="card-body p-0">${buildTable([{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'clearing',label:'Clearing'}],bancos)}</div></div></div>
-            <div class="col-md-6"><div class="card"><div class="card-header">Cuentas Bancarias</div><div class="card-body p-0">${buildTable([{key:'cuenta',label:'Cuenta'},{key:'nombre',label:'Nombre'},{key:'caja',label:'Caja'},{key:'moneda',label:'Moneda'}],cuentas)}</div></div></div></div>
-            <div class="card"><div class="card-header">Medios de Pago</div><div class="card-body p-0">${buildTable([{key:'pago',label:'Cód'},{key:'detalle',label:'Detalle'},{key:'tasa',label:'Tasa'},{key:'dias1',label:'Días'}],pagos)}</div></div>`;
-        } catch(e){$('app-content').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
+        const tabs = [
+          {id:'bancos',label:'Bancos',ep:'tesoreria/bancos',cols:[{key:'codigo',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'clearing',label:'Clearing'}]},
+          {id:'cuentas',label:'Cuentas Bancarias',ep:'tesoreria/cuentas',cols:[{key:'cuenta',label:'Cuenta'},{key:'nombre',label:'Nombre'},{key:'caja',label:'Caja'},{key:'moneda',label:'Moneda'}]},
+          {id:'pagos',label:'Medios de Pago',ep:'tesoreria/pagos',cols:[{key:'pago',label:'Cód'},{key:'detalle',label:'Detalle'},{key:'tasa',label:'Tasa'},{key:'dias1',label:'Días'}]},
+        ];
+        let curTab = tabs[0];
+        function hdr() {
+          let h = `<div class="module-header"><h4><i class="bi bi-piggy-bank"></i>Tesorería</h4></div>
+            <ul class="nav nav-tabs mb-3" id="tesTabs">`;
+          tabs.forEach((t,i) => { h+=`<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${i}">${t.label}</a></li>`; });
+          h+=`</ul><div id="tesR"></div>`;
+          $('app-content').innerHTML = h;
+          document.querySelectorAll('#tesTabs .nav-link').forEach(a => {
+            a.addEventListener('click', e => {
+              e.preventDefault();
+              document.querySelectorAll('#tesTabs .nav-link').forEach(l=>l.classList.remove('active'));
+              a.classList.add('active');
+              curTab = tabs[parseInt(a.dataset.tab)];
+              loadTab();
+            });
+          });
+          loadTab();
+        }
+        async function loadTab() {
+          if (!curTab) return;
+          const r = $('tesR'); if (!r) return;
+          r.innerHTML = renderLoading();
+          try {
+            const d = await API.get(`/api/${curTab.ep}?limit=300`);
+            r.innerHTML = `<div class="card"><div class="card-header">${curTab.label}</div><div class="card-body p-0">${buildTable(curTab.cols, d)}</div></div>`;
+          } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        }
+        hdr();
       },
       ventas: () => renderSimple('ventas',[
         {key:'fecha',label:'Fecha'},{key:'comp',label:'Nro'},{key:'codigo',label:'Tipo'},
