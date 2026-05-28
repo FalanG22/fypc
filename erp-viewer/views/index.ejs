@@ -894,11 +894,44 @@
         {key:'provnom',label:'Prov'},{key:'email',label:'Email'},{key:'telefono',label:'Tel'},
         {key:'credito',label:'Crédito',render:money}
       ],'clienteid','Clientes','Buscar: nombre, cuit...'),
-      proveedores: () => renderSimple('proveedores',[
-        {key:'proveedor',label:'Cód'},{key:'nombre',label:'Nombre'},{key:'deno',label:'Denominación'},
-        {key:'cuit',label:'CUIT'},{key:'domicilio',label:'Domicilio'},{key:'localidad',label:'Localidad'},
-        {key:'provnom',label:'Prov'},{key:'telefono',label:'Tel'},{key:'saldo',label:'Saldo',render:money}
-      ],'proveedor','Proveedores','Buscar: nombre, cuit...'),
+      proveedores: () => {
+        $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-truck"></i>Proveedores — Cta.Cte.</h4>${XLS_BTN}</div>
+          <div class="row g-2 mb-3 align-items-center">
+            <div class="col-md-4"><div class="input-group input-group-sm search-box">
+              <input type="text" class="form-control" id="pvS" placeholder="Buscar: nombre, cuit...">
+              <button class="btn btn-primary" onclick="pageOffset=0;reloadFn()"><i class="bi bi-search"></i></button>
+              <button class="btn btn-outline-secondary" onclick="pageOffset=0;['pvS','pvF'].forEach(id=>{const e=$(id);if(e)e.value=''});reloadFn()"><i class="bi bi-x-lg"></i></button></div></div>
+            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="pvF" value="${new Date().toISOString().slice(0,10)}" onchange="reloadFn()"></div>
+            <div class="col-md-auto"><span class="text-muted small">Saldo al</span></div>
+          </div>
+          <div id="pvR"></div>`;
+        reloadFn = () => {
+          const r = $('pvR'); if (!r) return;
+          r.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+          const p = new URLSearchParams();
+          const s = $('pvS')?.value; if (s) p.set('search', s);
+          const f = $('pvF')?.value; if (f) p.set('fecha', f);
+          API.get(`/api/ctacte/proveedores/resumen?${p}`).then(d => {
+            currentData = d;
+            let h = `<div class="card"><div class="card-header d-flex justify-content-between">
+              <span>${d.length} proveedores</span><span class="text-muted small">Saldo total: ${money(d.reduce((a,r)=>a+parseFloat(r.saldo_ctacte||0),0))}</span></div>
+              <div class="card-body p-0"><div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>
+              <th>Cód</th><th>Nombre</th><th>Denominación</th><th>CUIT</th><th>Saldo Cta.Cte.</th><th>Vencido</th><th>Saldo Estático</th><th>Debe</th><th>Haber</th></tr></thead><tbody>`;
+            d.forEach(r2 => {
+              h += `<tr class="row-click" onclick="showPvCtaCte('${esc(r2.proveedor)}')">
+                <td>${esc(r2.proveedor)}</td><td>${esc(r2.nombre||'')}</td><td>${esc(r2.deno||'')}</td>
+                <td>${esc(r2.cuit||'')}</td>
+                <td><strong>${money(r2.saldo_ctacte)}</strong></td>
+                <td><span class="badge ${parseFloat(r2.vencido||0)>0?'bg-danger':'bg-secondary'}">${money(r2.vencido)}</span></td>
+                <td class="text-muted">${money(r2.saldo_static)}</td>
+                <td>${money(r2.debe_total)}</td><td>${money(r2.haber_total)}</td></tr>`;
+            });
+            h += `</tbody></table></div></div></div>`;
+            r.innerHTML = h;
+          }).catch(e => { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; });
+        };
+        reloadFn();
+      },
       stock: () => {
         $('app-content').innerHTML = `<div class="module-header"><h4><i class="bi bi-box"></i>Stock / Productos</h4>${XLS_BTN}</div>
           <div class="row g-2 mb-3"><div class="col-md-5"><div class="input-group input-group-sm search-box">
@@ -1849,12 +1882,19 @@
         $('modalTitle').innerHTML=`<i class="bi bi-truck me-2"></i>Proveedor`;
         modal.show();
         try {
-          const d=await API.get(`/api/proveedores/${id}`);
+          const [d, ctacte] = await Promise.all([
+            API.get(`/api/proveedores/${id}`),
+            API.get(`/api/ctacte/proveedores/${id}/saldos`)
+          ]);
           let h=`<div class="row"><div class="col-md-6"><div class="detail-panel"><dl>`;
           [['Proveedor',d.proveedor],['Nombre',d.nombre],['Denominación',d.deno],['CUIT',d.cuit],
            ['Domicilio',d.domicilio],['Localidad',d.localidad],['Provincia',d.provincia],
-           ['Teléfono',d.telefono],['Cond.IVA',d.ivare],['Moneda',d.moneda],['Saldo',money(d.saldo)]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
-          h+=`</dl></div></div></div>`;
+           ['Teléfono',d.telefono],['Cond.IVA',d.ivare],['Moneda',d.moneda],
+           ['Saldo (estático)',money(d.saldo)]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
+          h+=`</dl></div></div><div class="col-md-6"><div class="detail-panel"><dl>`;
+          [['Saldo Cta.Cte.',money(ctacte.saldo_ctacte)],['Total Debe',money(ctacte.debe_total)],['Total Haber',money(ctacte.haber_total)],['Vencido','<span class="badge '+(parseFloat(ctacte.vencido||0)>0?'bg-danger':'bg-secondary')+'">'+money(ctacte.vencido)+'</span>']].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${v}</dd>`;});
+          h+=`</dl><button class="btn btn-sm btn-outline-primary mt-2" onclick="showPvCtaCte('${esc(d.proveedor)}')"><i class="bi bi-list-check me-1"></i>Ver Cta.Cte. Detallada</button>`;
+          h+=`</div></div></div>`;
           $('modalBody').innerHTML=h;
         } catch(e){$('modalBody').innerHTML=`<div class="alert alert-danger">${e.error||e.message}</div>`;}
       },
@@ -1918,6 +1958,44 @@
           $('modalBody').innerHTML = `<div class="alert alert-danger mb-0">${e.error||e.message}</div>`;
         }
       },
+    };
+
+    window.showPvCtaCte = async (proveedor) => {
+      const modal = bootstrap.Modal.getOrCreateInstance('#detalleModal');
+      $('modalBody').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Cargando movimientos...</p></div>';
+      $('modalTitle').innerHTML = `<i class="bi bi-truck me-2"></i>Cta.Cte. Proveedor: ${esc(proveedor)}`;
+      modal.show();
+      try {
+        const r = await API.get(`/api/ctacte/proveedores/detalle/${proveedor}`);
+        const rows = r.rows || [];
+        const tot = r.totals || {};
+        let h = `<div class="d-flex justify-content-between align-items-center mb-2">
+          <span><strong>${rows.length}</strong> movimientos</span>
+          <div><span class="badge bg-primary me-1">Debe: ${money(tot.total_debe)}</span>
+          <span class="badge bg-success me-1">Haber: ${money(tot.total_haber)}</span>
+          <span class="badge ${tot.saldo_final>0?'bg-warning text-dark':'bg-secondary'}">Saldo: ${money(tot.saldo_final)}</span>
+          ${tot.vencido>0?`<span class="badge bg-danger">Vencido: ${money(tot.vencido)}</span>`:''}</div></div>
+          <div class="table-wrap" style="max-height:55vh"><table class="table table-sm table-hover mb-0"><thead><tr>
+          <th>Fecha</th><th>Tipo</th><th>Comp</th><th>Razón Social</th><th>Neto</th><th>IVA</th><th>Total</th><th>Vencimiento</th><th>Mov.</th><th>Saldo</th></tr></thead><tbody>`;
+        rows.forEach(r2 => {
+          const esDebe = r2.tipo_mov === 'DEBE';
+          h += `<tr>
+            <td>${r2.fecha?r2.fecha.substring(0,10):''}</td>
+            <td><span class="badge ${esDebe?'bg-primary':'bg-success'}">${r2.codigo||''}</span></td>
+            <td>${esc(r2.comp||'')}</td>
+            <td>${esc(r2.razon_social||r2.nombre||'')}</td>
+            <td class="${esDebe?'':'text-success'}">${esDebe?'':'− '}${money(r2.neto)}</td>
+            <td>${money(r2.iva)}</td>
+            <td><strong>${money(r2.total)}</strong></td>
+            <td class="text-muted">${r2.fechaven?r2.fechaven.substring(0,10):'-'}</td>
+            <td><span class="badge ${esDebe?'bg-primary':'bg-success'}">${r2.tipo_mov}</span></td>
+            <td><strong>${money(r2.saldo_parcial)}</strong></td></tr>`;
+        });
+        h += `</tbody></table></div></div>`;
+        $('modalBody').innerHTML = h;
+      } catch(e) {
+        $('modalBody').innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`;
+      }
     };
 
     function showLogin(){
