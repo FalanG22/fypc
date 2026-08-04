@@ -204,6 +204,81 @@
     }
     .detail-panel dd { margin-bottom: 2px; font-size: .82rem; color: #1e293b; }
 
+    /* === ORDEN DE PAGO VOUCHER === */
+    .op-voucher {
+      border: 1px solid rgba(148,163,184,.45);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.85);
+      overflow: hidden;
+    }
+    .op-voucher-head {
+      display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
+      padding: 14px 16px; border-bottom: 1px solid rgba(148,163,184,.35);
+      background: linear-gradient(180deg, rgba(241,245,249,.9), rgba(248,250,252,.7));
+    }
+    .op-voucher-title {
+      font-size: 1.05rem; font-weight: 700; color: #0f172a; letter-spacing: .02em;
+      margin: 0 0 2px;
+    }
+    .op-voucher-meta { font-size: .78rem; color: #334155; }
+    .op-voucher-meta strong { color: #0f172a; }
+    .op-prov {
+      padding: 10px 16px; border-bottom: 1px solid rgba(148,163,184,.3);
+      background: rgba(226,232,240,.35); font-size: .78rem;
+    }
+    .op-prov .op-prov-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 4px 16px;
+    }
+    .op-prov .lbl { color: var(--text-muted); font-size: .65rem; text-transform: uppercase; letter-spacing: .3px; }
+    .op-cols { display: grid; grid-template-columns: 1fr 1.15fr; min-height: 120px; }
+    @media (max-width: 768px) { .op-cols { grid-template-columns: 1fr; } }
+    .op-col { min-width: 0; display: flex; flex-direction: column; }
+    .op-col + .op-col { border-left: 1px solid rgba(148,163,184,.35); }
+    @media (max-width: 768px) {
+      .op-col + .op-col { border-left: none; border-top: 1px solid rgba(148,163,184,.35); }
+    }
+    .op-col-h {
+      padding: 8px 12px; font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .4px; color: #334155; background: rgba(241,245,249,.85);
+      border-bottom: 1px solid rgba(148,163,184,.3);
+    }
+    .op-col-body { flex: 1; overflow-x: auto; }
+    .op-tbl { width: 100%; margin: 0; font-size: .75rem; }
+    .op-tbl th {
+      font-size: .62rem; text-transform: uppercase; letter-spacing: .3px;
+      color: var(--text-muted); font-weight: 600; padding: 6px 8px;
+      border-bottom: 1px solid rgba(226,232,240,.8); white-space: nowrap;
+      background: rgba(248,250,252,.6);
+    }
+    .op-tbl td { padding: 6px 8px; vertical-align: top; border-bottom: 1px solid rgba(241,245,249,.9); color: #1e293b; }
+    .op-tbl tr:last-child td { border-bottom: none; }
+    .op-tbl .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .op-amt-out { color: #b45309; font-weight: 600; }
+    .op-amt-in { color: #047857; font-weight: 600; }
+    .op-amt-ret { color: #a16207; font-weight: 600; }
+    .op-badge {
+      display: inline-block; font-size: .6rem; font-weight: 600; padding: 1px 6px;
+      border-radius: 4px; margin-right: 4px; vertical-align: middle;
+    }
+    .op-badge-tr { background: #dbeafe; color: #1d4ed8; }
+    .op-badge-ch { background: #e0e7ff; color: #4338ca; }
+    .op-badge-ef { background: #dcfce7; color: #15803d; }
+    .op-badge-re { background: #fef3c7; color: #a16207; }
+    .op-badge-ot { background: #f1f5f9; color: #475569; }
+    .op-foot {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
+      padding: 12px 16px; border-top: 1px solid rgba(148,163,184,.35);
+      background: rgba(241,245,249,.55);
+    }
+    .op-foot-total { font-size: 1rem; font-weight: 700; color: #0f172a; }
+    .op-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .op-chip {
+      font-size: .68rem; padding: 3px 8px; border-radius: 6px;
+      background: rgba(255,255,255,.8); border: 1px solid rgba(203,213,225,.7); color: #475569;
+    }
+    .op-chip strong { color: #0f172a; }
+    .op-empty { padding: 16px 12px; color: var(--text-muted); font-size: .78rem; font-style: italic; }
+
     /* === NAV TABS === */
     .nav-tabs {
       border-bottom: 1px solid rgba(226,232,240,.4);
@@ -411,6 +486,211 @@
     const esc = s => { const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; };
     const fmt = (v,d) => v!=null&&v!=='' ? (d?Number(v).toFixed(d):v) : '';
     const money = v => v!=null ? `$${Number(v).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '';
+    const moneySigned = v => {
+      if (v == null || v === '') return '';
+      const n = Number(v);
+      const s = Math.abs(n).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2});
+      return n < 0 ? `-$${s}` : `$${s}`;
+    };
+
+    function classifyValorTipo(nombre, valortipo, esRet) {
+      if (esRet) return 're';
+      const t = `${nombre||''}`;
+      if (valortipo === 'C' || valortipo === 'P' || /cheque|echeq/i.test(t)) return 'ch';
+      if (/transfer/i.test(t)) return 'tr';
+      if (/efectivo|caja/i.test(t)) return 'ef';
+      return 'ot';
+    }
+    function valorBadge(kind) {
+      const map = {
+        re: ['op-badge-re','Retención'],
+        ch: ['op-badge-ch','Cheque'],
+        tr: ['op-badge-tr','Transferencia'],
+        ef: ['op-badge-ef','Efectivo'],
+        ot: ['op-badge-ot','Medio']
+      };
+      const [cls, label] = map[kind] || map.ot;
+      return `<span class="op-badge ${cls}">${label}</span>`;
+    }
+
+    /** Une medios + retenciones (+ vinculados / legacy) al estilo del comprobante impreso. */
+    function collectOpFormasPago(d) {
+      let medios = [...(d.medios_pago || [])];
+      let rets = [...(d.retenciones || [])];
+      if (!medios.length && !rets.length && d.medios_vinculados?.length) {
+        d.medios_vinculados.forEach((v) => {
+          medios.push(...(v.medios_pago || []));
+          rets.push(...(v.retenciones || []));
+        });
+      }
+      const mapRow = (m, isRet) => {
+        const sale = parseFloat(m.impsale) || 0;
+        const entra = parseFloat(m.impentra) || 0;
+        let importe = 0;
+        if (sale) importe = -Math.abs(sale);
+        else if (entra) importe = Math.abs(entra);
+        const cajaParts = [];
+        const cuenta = m.cuenta != null && String(m.cuenta).trim() !== '' ? String(m.cuenta).trim() : '';
+        const caja = m.caja != null && String(m.caja).trim() !== '' ? String(m.caja).trim() : '';
+        // Impreso: "20 Banco Galicia- Cta Cte $ 377-1 383-3" / "12 Retenciones IIBB..."
+        if (cuenta) cajaParts.push(cuenta);
+        else if (caja) cajaParts.push(caja);
+        if (m.cuenta_nombre) cajaParts.push(m.cuenta_nombre);
+        else if (m.banco_nombre) cajaParts.push(m.banco_nombre);
+        else if (isRet && m.tipo_nombre) cajaParts.push(m.tipo_nombre);
+        const kind = classifyValorTipo(m.tipo_nombre || m.detalle, m.valortipo, isRet || !!m.es_retencion);
+        // Transfer/echeq: la ref suele ir en numero (numcheque vacío)
+        const refCheque = (m.numcheque != null && String(m.numcheque).trim())
+          || (m.numero != null && String(m.numero).trim())
+          || '';
+        return {
+          caja_banco: cajaParts.join(' ') || m.tipo_nombre || '—',
+          valor: m.tipo_nombre || m.detalle || (isRet ? 'Retención' : '—'),
+          cheque: refCheque,
+          venc: m.vence || m.fecha || '',
+          importe,
+          es_retencion: isRet || !!m.es_retencion,
+          kind,
+          alicuota: m.c_alicuotaret,
+          base: m.c_baseimponible
+        };
+      };
+      if (medios.length || rets.length) {
+        return [...rets.map((r) => mapRow(r, true)), ...medios.map((m) => mapRow(m, false))];
+      }
+      if (d.valores?.length) {
+        return d.valores.map((v) => {
+          const isRet = !!v.esreten || /reten/i.test(v.tipo || '');
+          const kind = classifyValorTipo(v.tipo, null, isRet);
+          const imp = parseFloat(v.importe) || 0;
+          return {
+            caja_banco: v.banco_nombre || '—',
+            valor: v.tipo || (isRet ? 'Retención' : '—'),
+            cheque: v.numero || '',
+            venc: v.vence || '',
+            importe: isRet || kind === 'ch' || kind === 'tr' ? -Math.abs(imp) : imp,
+            es_retencion: isRet,
+            kind,
+            alicuota: null,
+            base: null
+          };
+        });
+      }
+      return [];
+    }
+
+    function normalizeOpImputaciones(d) {
+      return (d.imputaciones || []).map((imp) => ({
+        fecha: imp.fac_fecha || imp.fecha || imp.fecha_aplicacion || '',
+        doc: [
+          imp.tipo_nombre || imp.tipo_factura || imp.codigo || imp.codigo_factura,
+          imp.fac_clase ? imp.fac_clase : '',
+          imp.comp || imp.comp_factura || imp.fac_comp
+        ].filter((x) => x != null && String(x).trim() !== '').join(' '),
+        detalle: imp.detalle || '',
+        importe: parseFloat(imp.importe ?? imp.importe_aplicado) || 0
+      }));
+    }
+
+    /** Comprobante visual: documentos imputados | forma de pago (banco/transf/cheque/retenciones). */
+    function renderOrdenPagoVoucher(d) {
+      const o = d.orden || {};
+      const imps = normalizeOpImputaciones(d);
+      const formas = collectOpFormasPago(d);
+      const totalOrden = d.total_orden != null
+        ? d.total_orden
+        : (parseFloat(o.neto)||0) + (parseFloat(o.iva)||0) + (parseFloat(o.percepcion)||0) + (parseFloat(o.retencion)||0);
+      const totalImp = d.total_imputado != null
+        ? d.total_imputado
+        : (d.total_aplicado != null ? d.total_aplicado : imps.reduce((s, i) => s + i.importe, 0));
+      const res = d.resumen || {};
+      const nRet = res.cant_retenciones ?? formas.filter((f) => f.es_retencion).length;
+      const nCh = res.cant_cheques ?? formas.filter((f) => f.kind === 'ch').length;
+      const nTr = res.cant_transferencias ?? formas.filter((f) => f.kind === 'tr').length;
+      const totalRet = res.total_retenido ?? formas.filter((f) => f.es_retencion).reduce((s, f) => s + Math.abs(f.importe), 0);
+      const totalPagado = formas.filter((f) => !f.es_retencion).reduce((s, f) => s + Math.abs(f.importe), 0);
+
+      let h = `<div class="op-voucher mb-3">
+        <div class="op-voucher-head">
+          <div>
+            <p class="op-voucher-title">Orden de Pago</p>
+            <div class="op-voucher-meta">
+              <strong>Nro:</strong> ${esc(o.codigo || '')} ${esc(o.comp || '')}
+              ${o.reversion == 1 ? ' <span class="badge bg-secondary">Reversado</span>' : ''}
+            </div>
+          </div>
+          <div class="op-voucher-meta text-md-end">
+            <div><strong>Fecha:</strong> ${esc(o.fecha || '—')}</div>
+            <div><strong>Condición:</strong> ${esc(o.pago_nombre || o.pago || '—')}</div>
+          </div>
+        </div>
+        <div class="op-prov">
+          <div class="op-prov-grid">
+            <div><div class="lbl">Proveedor</div><strong>${esc(o.nombre || '—')}</strong></div>
+            <div><div class="lbl">CUIT</div>${esc(o.cuit || '—')}</div>
+            <div><div class="lbl">Cód. proveedor</div>${esc(o.proveedor || '—')}</div>
+            ${o.prov_domicilio || o.prov_localidad ? `<div><div class="lbl">Domicilio</div>${esc([o.prov_domicilio, o.prov_localidad, o.prov_provincia].filter(Boolean).join(', '))}</div>` : ''}
+            ${o.nota ? `<div><div class="lbl">Nota</div>${esc(o.nota)}</div>` : ''}
+          </div>
+        </div>
+        <div class="op-cols">
+          <div class="op-col">
+            <div class="op-col-h">Documentos imputados</div>
+            <div class="op-col-body">`;
+      if (imps.length) {
+        h += `<table class="op-tbl"><thead><tr>
+          <th>Fecha</th><th>Comprobante</th><th class="num">Importe</th>
+        </tr></thead><tbody>`;
+        imps.forEach((i) => {
+          h += `<tr>
+            <td>${esc(i.fecha)}</td>
+            <td><strong>${esc(i.doc || '—')}</strong>${i.detalle ? `<div class="text-muted" style="font-size:.68rem">${esc(i.detalle)}</div>` : ''}</td>
+            <td class="num">${money(i.importe)}</td>
+          </tr>`;
+        });
+        h += `</tbody></table>`;
+      } else {
+        h += `<div class="op-empty">Sin documentos imputados</div>`;
+      }
+      h += `</div></div>
+          <div class="op-col">
+            <div class="op-col-h">Forma de pago / retenciones</div>
+            <div class="op-col-body">`;
+      if (formas.length) {
+        h += `<table class="op-tbl"><thead><tr>
+          <th>Caja / Banco</th><th>Valor</th><th>Cheque / Ref.</th><th>Venc.</th><th class="num">Importe</th>
+        </tr></thead><tbody>`;
+        formas.forEach((f) => {
+          const amtCls = f.es_retencion ? 'op-amt-ret' : (f.importe < 0 ? 'op-amt-out' : 'op-amt-in');
+          const extra = f.es_retencion && (f.base || f.alicuota)
+            ? `<div class="text-muted" style="font-size:.65rem">Base ${money(f.base)}${f.alicuota != null && f.alicuota !== '' ? ` · ${esc(f.alicuota)}%` : ''}</div>`
+            : '';
+          h += `<tr>
+            <td>${esc(f.caja_banco)}</td>
+            <td>${valorBadge(f.kind)}${esc(f.valor)}${extra}</td>
+            <td>${esc(f.cheque || '—')}</td>
+            <td>${esc(f.venc || '—')}</td>
+            <td class="num ${amtCls}">${moneySigned(f.importe)}</td>
+          </tr>`;
+        });
+        h += `</tbody></table>`;
+      } else {
+        h += `<div class="op-empty">Sin detalle de caja/banco, cheques, transferencias ni retenciones</div>`;
+      }
+      h += `</div></div></div>
+        <div class="op-foot">
+          <div class="op-chips">
+            <span class="op-chip">Imputado <strong>${money(totalImp)}</strong></span>
+            ${nTr ? `<span class="op-chip">Transferencias <strong>${nTr}</strong></span>` : ''}
+            ${nCh ? `<span class="op-chip">Cheques <strong>${nCh}</strong></span>` : ''}
+            ${nRet ? `<span class="op-chip">Retenciones <strong>${nRet}</strong> · ${money(totalRet)}</span>` : ''}
+            ${formas.length ? `<span class="op-chip">Medios pagados <strong>${money(totalPagado)}</strong></span>` : ''}
+          </div>
+          <div class="op-foot-total">Total: ${money(totalOrden)}</div>
+        </div>
+      </div>`;
+      return h;
+    }
 
     const PAGE_SIZE = 200;
     let pageOffset = 0;
@@ -471,6 +751,7 @@
       compras_tesoreria: { icon:'wallet', label:'Compras / Tesorería' },
       maestros: { icon:'bookmark-star', label:'Maestros' },
       ctacte: { icon:'wallet2', label:'Cta.Cte.' },
+      analisis_cobranzas: { icon:'diagram-3', label:'Cobranzas / Pagos' },
 
       rrhh: { icon:'person-badge', label:'RRHH / Sueldos' },
       tesoreria: { icon:'piggy-bank', label:'Tesorería' },
@@ -485,7 +766,7 @@
     const GROUPS = [
       { label:'Principales', items:['dashboard','comprobantes','clientes','proveedores','stock','pedidos','ventas'] },
       { label:'Movimientos', items:['movmercaderia','movcaja'] },
-      { label:'Administración', items:['tesoreria','contabilidad','impuestos','cobranzas','ctacte','compras_tesoreria','obras'] },
+      { label:'Administración', items:['tesoreria','contabilidad','impuestos','cobranzas','analisis_cobranzas','ctacte','compras_tesoreria','obras'] },
       { label:'RRHH', items:['rrhh'] },
       { label:'Sistema', items:['usuarios'] },
     ];
@@ -1326,6 +1607,286 @@
         reloadFn = () => loadCobTab();
         renderCob();
       },
+      analisis_cobranzas: () => {
+        const tabs = [
+          { id:'facturas', label:'Facturas venta', ep:'analisis-cobranzas/facturas-venta', key:'moviid', detail:'showAcFactura',
+            cols:[
+              {key:'fecha',label:'Fecha'},{key:'comp',label:'Nro'},{key:'codigo',label:'Tipo'},{key:'tipocomprobante',label:'Descripción'},
+              {key:'nombre',label:'Cliente'},{key:'cuit',label:'CUIT'},
+              {key:'total',label:'Total',render:money},{key:'cobrado',label:'Cobrado',render:money},
+              {key:'cant_aplicaciones',label:'Aplic.'},{key:'fechaven',label:'Venc'},{key:'cae',label:'CAE'}
+            ]},
+          { id:'recibos', label:'Recibos cobranza', ep:'analisis-cobranzas/recibos-venta', key:'moviid', detail:'showAcRecibo',
+            cols:[
+              {key:'fecha',label:'Fecha'},{key:'comp',label:'Nro'},{key:'codigo',label:'Tipo'},
+              {key:'nombre',label:'Cliente'},{key:'cuit',label:'CUIT'},
+              {key:'total',label:'Importe',render:money},{key:'aplicado',label:'Aplicado',render:money},
+              {key:'cant_facturas',label:'Facturas'},{key:'pago_nombre',label:'Medio pago'},{key:'estadodoc',label:'Est.'}
+            ]},
+          { id:'op', label:'Órdenes pago (proveedores)', ep:'analisis-cobranzas/ordenes-pago', key:'promoviid', detail:'showAcOp',
+            cols:[
+              {key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'codigo',label:'Tipo'},{key:'nombre',label:'Nombre'},
+              {key:'proveedor',label:'Prov.'},{key:'total',label:'Total OP',render:money},
+              {key:'total_imputado',label:'Imputado',render:money},{key:'lineas_imputacion',label:'Líneas'},
+              {key:'pago_nombre',label:'Pago'},{key:'reversion',label:'Rev.',render:v=>v==1?'<span class="badge bg-secondary">Rev</span>':''},{key:'estadoreg',label:'Est.'}
+            ]}
+        ];
+        let curTab = tabs[0];
+        let anios = [];
+
+        function buildAcTable(cols, data, key, detailFn) {
+          if (!data?.length) return '<div class="alert alert-info m-3">Sin resultados</div>';
+          let h = '<div class="table-wrap"><table class="table table-sm table-hover mb-0"><thead><tr>';
+          cols.forEach(c => { h += `<th>${c.label}</th>`; });
+          h += '</tr></thead><tbody>';
+          data.forEach(r => {
+            h += `<tr class="row-click" onclick="${detailFn}('${esc(r[key])}')">`;
+            cols.forEach(c => {
+              const v = c.render ? c.render(r[c.key]) : esc(r[c.key]);
+              h += `<td>${v}</td>`;
+            });
+            h += '</tr>';
+          });
+          h += '</tbody></table></div>';
+          return h;
+        }
+
+        const AC_MEDIOS_COLS = [
+          {key:'tipo_nombre',label:'Medio'},{key:'fecha',label:'Fecha'},{key:'vence',label:'Vencimiento'},
+          {key:'numero',label:'Nº doc.'},{key:'numcheque',label:'Nº cheque'},{key:'banco_nombre',label:'Banco'},
+          {key:'cuenta_nombre',label:'Cuenta'},{key:'impentra',label:'Entrada',render:money},
+          {key:'impsale',label:'Salida',render:money},{key:'detalle',label:'Detalle'}
+        ];
+        const AC_RET_COLS = [
+          {key:'tipo_nombre',label:'Retención'},{key:'fecha',label:'Fecha'},
+          {key:'c_baseimponible',label:'Base imponible',render:money},
+          {key:'c_alicuotaret',label:'Alic %',render:v=>v!=null&&v!==''?`${v}%`:''},
+          {key:'impsale',label:'Importe',render:v=>money(v||0)},{key:'impentra',label:'Entrada',render:money}
+        ];
+        function acMediosResumen(res) {
+          if (!res) return '';
+          return `<p class="small text-muted mb-2">Cheques: <strong>${res.cant_cheques}</strong> · Transferencias: <strong>${res.cant_transferencias}</strong> · Retenciones: <strong>${res.cant_retenciones}</strong> · Entrada ${money(res.total_entrada)} · Salida ${money(res.total_salida)} · Retenido ${money(res.total_retenido)}</p>`;
+        }
+        function acBlockAnalisisOp(d) {
+          let h = '';
+          const est = d.estado_tesoreria;
+          const badge = est === 'con_movimientos' ? 'success' : est === 'reversado' ? 'secondary' : est === 'solo_condicion' ? 'warning' : 'danger';
+          const estLabel = { con_movimientos:'Caja registrada', reversado:'Reversado / sin caja activa', solo_condicion:'Solo condición en cabecera', sin_datos:'Sin rastro en tesorería' }[est] || est;
+          h += `<p class="mb-2"><span class="badge bg-${badge}">${esc(estLabel)}</span></p>`;
+          if (d.condicion_pago?.detalle || d.condicion_pago?.pagosid) {
+            h += `<div class="detail-panel mb-2 p-2 small"><strong>Condición / medio en cabecera (promovi.pago):</strong> ${esc(d.condicion_pago.detalle||'—')} (cód. ${esc(d.condicion_pago.codigo||'—')}) · pagosid <code>${esc(d.condicion_pago.pagosid||'—')}</code><br><span class="text-muted">Esto es plazo o medio declarado; no siempre coincide con cheques/transferencias en cajamov.</span></div>`;
+          }
+          if (d.diagnostico?.length) {
+            h += '<h6 class="mb-2">Diagnóstico (por qué no ves cheques/transferencias)</h6><ul class="small mb-3">';
+            d.diagnostico.forEach((t) => { h += `<li>${esc(t)}</li>`; });
+            h += '</ul>';
+          }
+          if (d.vinculos_imputacion?.length) {
+            h += '<h6 class="mb-2">Vínculos de imputación (proimpu → tesorería)</h6>' + buildTable([
+              {key:'parentopagoid',label:'CP pago'},{key:'recibo_comp',label:'Recibo ref.'},{key:'parentreciboid',label:'CR promovi'},
+              {key:'recibo_estado',label:'Estado recibo'}
+            ], d.vinculos_imputacion.map(v => ({
+              ...v,
+              recibo_estado: v.recibo_promovi
+                ? `${v.recibo_promovi.codigo} ${v.recibo_promovi.comp}${v.recibo_promovi.reversion==1?' (reversado)':''} neto ${money(v.recibo_promovi.neto)}`
+                : '—'
+            })));
+          }
+          return h;
+        }
+        function acBlockMedios(d) {
+          let h = '';
+          if (d.resumen) h += acMediosResumen(d.resumen);
+          if (d.medios_pago?.length) h += '<h6 class="mb-2">Formas de pago (caja / banco)</h6>' + buildTable(AC_MEDIOS_COLS, d.medios_pago);
+          if (d.retenciones?.length) h += '<h6 class="mt-3 mb-2">Retenciones practicadas</h6>' + buildTable(AC_RET_COLS, d.retenciones);
+          if (d.retenciones_cabecera?.length) h += '<h6 class="mt-3 mb-2">Impuestos en cabecera del comprobante</h6>' + buildTable([
+            {key:'concepto',label:'Concepto'},{key:'importe',label:'Importe',render:money},{key:'tipo_ret',label:'Tipo'}
+          ], d.retenciones_cabecera);
+          if (!d.medios_pago?.length && !d.retenciones?.length && !d.retenciones_cabecera?.length) {
+            h += '<p class="small text-muted">No hay detalle de medios de pago en caja para este comprobante.</p>';
+          }
+          return h;
+        }
+
+        window.showAcFactura = async (moviid) => {
+          const modal = bootstrap.Modal.getOrCreateInstance('#detalleModal');
+          $('modalBody').innerHTML = renderLoading();
+          $('modalTitle').innerHTML = '<i class="bi bi-file-earmark-text me-2"></i>Factura venta';
+          modal.show();
+          try {
+            const d = await API.get('/api/analisis-cobranzas/facturas-venta/' + encodeURIComponent(moviid));
+            const c = d.comprobante;
+            let h = `<div class="detail-panel mb-3"><dl class="row mb-0">
+              <dt class="col-sm-3">Comprobante</dt><dd class="col-sm-9">${esc(c.codigo)} ${esc(c.comp)} — ${esc(c.tipocomprobante||'')}</dd>
+              <dt class="col-sm-3">Cliente</dt><dd class="col-sm-9">${esc(c.nombre)} (${esc(c.cuit)})</dd>
+              <dt class="col-sm-3">Fechas</dt><dd class="col-sm-9">Emisión: ${esc(c.fecha)} · Venc: ${esc(c.fechaven)}</dd>
+              <dt class="col-sm-3">Importes</dt><dd class="col-sm-9">Neto ${money(c.neto)} · IVA ${money(c.iva)} · <strong>Total ${money(c.total)}</strong></dd>
+              <dt class="col-sm-3">Cobrado</dt><dd class="col-sm-9"><strong class="text-success">${money(d.total_cobrado)}</strong></dd>
+              <dt class="col-sm-3">CAE</dt><dd class="col-sm-9">${esc(c.campocae)} ${c.campofechacae?'('+esc(c.campofechacae)+')':''}</dd>
+            </dl></div>`;
+            if (d.lineas?.length) {
+              h += '<h6 class="mb-2">Renglones</h6>' + buildTable([
+                {key:'clave',label:'Clave'},{key:'art_detalle',label:'Artículo'},{key:'cantidad',label:'Cant'},
+                {key:'precio',label:'Precio',render:money},{key:'subtotal',label:'Subtotal',render:money}
+              ], d.lineas);
+            }
+            h += '<h6 class="mt-3 mb-2">Cobranzas / imputaciones</h6>';
+            h += buildTable([
+              {key:'fecha',label:'Fecha'},{key:'detalle',label:'Tipo'},{key:'importe',label:'Importe',render:money},
+              {key:'recibo_comp',label:'Recibo'},{key:'recibo_fecha',label:'Fec.recibo'},{key:'recibo_cliente',label:'Cliente rec.'}
+            ], d.cobranzas);
+            if (d.medios_por_recibo && Object.keys(d.medios_por_recibo).length) {
+              h += '<h6 class="mt-4 mb-2">Cómo se cobró (por recibo)</h6>';
+              Object.entries(d.medios_por_recibo).forEach(([rid, pack]) => {
+                const rec = d.cobranzas.find(c => c.recibo_moviid === rid);
+                h += `<div class="card mb-2"><div class="card-header py-2 small">Recibo ${esc(rec?.recibo_comp||rid)}</div><div class="card-body p-2">${acBlockMedios(pack)}</div></div>`;
+              });
+            }
+            $('modalBody').innerHTML = h;
+          } catch(e) { $('modalBody').innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+
+        window.showAcRecibo = async (moviid) => {
+          const modal = bootstrap.Modal.getOrCreateInstance('#detalleModal');
+          $('modalBody').innerHTML = renderLoading();
+          $('modalTitle').innerHTML = '<i class="bi bi-receipt me-2"></i>Recibo de cobranza';
+          modal.show();
+          try {
+            const d = await API.get('/api/analisis-cobranzas/recibos-venta/' + encodeURIComponent(moviid));
+            const c = d.comprobante;
+            let h = `<div class="detail-panel mb-3"><dl class="row mb-0">
+              <dt class="col-sm-3">Recibo</dt><dd class="col-sm-9">${esc(c.codigo)} ${esc(c.comp)}</dd>
+              <dt class="col-sm-3">Cliente</dt><dd class="col-sm-9">${esc(c.nombre)} · ${esc(c.cuit)}</dd>
+              <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">${esc(c.fecha)} · Medio: ${esc(d.comprobante.pago_nombre||c.pago)}</dd>
+              <dt class="col-sm-3">Importe</dt><dd class="col-sm-9"><strong>${money(c.total)}</strong></dd>
+            </dl></div>`;
+            h += '<h6 class="mb-2">Facturas aplicadas</h6>' + buildTable([
+              {key:'fecha',label:'Fecha apl.'},{key:'detalle',label:'Tipo'},{key:'importe',label:'Importe',render:money},
+              {key:'factura_codigo',label:'Fac.'},{key:'factura_comp',label:'Nro factura'},{key:'factura_fecha',label:'Fec.fac.'},
+              {key:'factura_total',label:'Total fac.',render:money},{key:'factura_cae',label:'CAE'}
+            ], d.aplicaciones);
+            h += '<h6 class="mt-3 mb-2">Medios de cobro y retenciones</h6>' + acBlockMedios(d);
+            if (d.valores?.length) {
+              h += '<h6 class="mt-3 mb-2">Valores tesorería (legacy)</h6>' + buildTable([
+                {key:'tipo',label:'Tipo'},{key:'importe',label:'Importe',render:money},{key:'banco_nombre',label:'Banco'},
+                {key:'numero',label:'Nro'},{key:'vence',label:'Venc'}
+              ], d.valores);
+            }
+            $('modalBody').innerHTML = h;
+          } catch(e) { $('modalBody').innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+
+        window.showAcOp = async (promoviid) => {
+          const modal = bootstrap.Modal.getOrCreateInstance('#detalleModal');
+          $('modalBody').innerHTML = renderLoading();
+          $('modalTitle').innerHTML = '<i class="bi bi-cash-stack me-2"></i>Orden de Pago';
+          modal.show();
+          try {
+            const d = await API.get('/api/analisis-cobranzas/ordenes-pago/' + encodeURIComponent(promoviid));
+            let h = renderOrdenPagoVoucher(d);
+            if (d.nota_tesoreria) h += `<div class="alert alert-warning py-2 small mb-3">${esc(d.nota_tesoreria)}</div>`;
+            h += `<details class="mb-2">
+              <summary class="small text-muted" style="cursor:pointer">Detalle técnico / diagnóstico de tesorería</summary>
+              <div class="pt-2">`;
+            h += '<h6 class="mb-2 mt-1">Facturas / comprobantes imputados (detalle)</h6>' + buildTable([
+              {key:'fecha',label:'Fecha'},{key:'codigo',label:'Tipo'},{key:'comp',label:'Nro'},{key:'detalle',label:'Detalle'},
+              {key:'importe',label:'Importe',render:money},{key:'proveedor_nombre',label:'Proveedor'},
+              {key:'fac_total',label:'Total doc.',render:money},{key:'recibo',label:'Recibo ref.'},{key:'parentopagoid',label:'CP imputación'}
+            ], d.imputaciones);
+            h += '<h6 class="mt-3 mb-2">Análisis de tesorería</h6>' + acBlockAnalisisOp(d);
+            h += '<h6 class="mt-3 mb-2">Movimientos de caja — esta orden</h6>' + acBlockMedios(d);
+            if (d.medios_vinculados?.length) {
+              h += '<h6 class="mt-3 mb-2">Caja — comprobantes vinculados</h6>';
+              d.medios_vinculados.forEach((v) => {
+                const rev = v.recibo_promovi?.reversion == 1 ? ' · recibo reversado' : '';
+                h += `<div class="card mb-2"><div class="card-header py-2 small">CP ${esc(v.parentopagoid)} · Recibo ${esc(v.recibo||'—')}${rev}</div><div class="card-body p-2">${acBlockMedios(v)}`;
+                if (v.medios_reversados?.medios_pago?.length || v.medios_reversados?.retenciones?.length) {
+                  h += '<p class="small text-muted mt-2 mb-1">Caja reversada en este vínculo:</p>' + acBlockMedios(v.medios_reversados);
+                }
+                h += '</div></div>';
+              });
+            }
+            if (d.medios_reversados_caja?.medios_pago?.length || d.medios_reversados_caja?.retenciones?.length) {
+              h += '<h6 class="mt-3 mb-2">Caja reversada (histórico)</h6>' + acBlockMedios(d.medios_reversados_caja);
+            }
+            if (d.valores?.length) {
+              h += '<h6 class="mt-3 mb-2">Valores tesorería (legacy)</h6>' + buildTable([
+                {key:'tipo',label:'Tipo'},{key:'importe',label:'Importe',render:money},
+                {key:'banco_nombre',label:'Banco'},{key:'numero',label:'Nro'},{key:'vence',label:'Venc'}
+              ], d.valores);
+            }
+            if (d.aplicaciones_ctacte?.length) {
+              h += '<h6 class="mt-3 mb-2">Aplicaciones cuenta corriente</h6>' + buildTable([
+                {key:'fecha',label:'Fecha'},{key:'comp',label:'Comp'},{key:'cancela',label:'Cancela',render:money},
+                {key:'totsaldo',label:'Saldo',render:money},{key:'cuota',label:'Cuota'},{key:'fechaven',label:'Venc'}
+              ], d.aplicaciones_ctacte);
+            }
+            h += `</div></details>`;
+            $('modalBody').innerHTML = h;
+          } catch(e) { $('modalBody').innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+
+        async function renderAc() {
+          try { anios = await API.get('/api/analisis-cobranzas/anios'); } catch(e) { anios = []; }
+          let h = `<div class="module-header"><h4><i class="bi bi-diagram-3"></i>Cobranzas y pagos (análisis)</h4>${XLS_BTN}</div>
+            <p class="text-muted small mb-3">Incluye formas de pago desde caja/tesorería: cheques (propio/terceros), transferencias, tarjetas y retenciones con base y alícuota.</p>
+            <ul class="nav nav-tabs mb-3" id="acTabs">`;
+          tabs.forEach((t,i) => { h += `<li class="nav-item"><a class="nav-link ${i===0?'active':''}" href="#" data-tab="${i}">${t.label}</a></li>`; });
+          h += `</ul>
+            <div class="row g-2 mb-3 align-items-center">
+              <div class="col-md-2"><label class="form-label small mb-0">Año</label>
+                <select class="form-select form-select-sm" id="acAnio" onchange="pageOffset=0;loadAcTab()">
+                  <option value="">Todos</option>
+                  ${anios.map(y=>`<option value="${y}">${y}</option>`).join('')}
+                </select></div>
+              <div class="col-md-4"><label class="form-label small mb-0">Buscar</label>
+                <div class="input-group input-group-sm">
+                  <input type="text" class="form-control" id="acS" placeholder="Nro, cliente, CUIT...">
+                  <button class="btn btn-primary" onclick="pageOffset=0;loadAcTab()"><i class="bi bi-search"></i></button>
+                  <button class="btn btn-outline-secondary" onclick="clearAc()"><i class="bi bi-x-lg"></i></button>
+                </div></div>
+            </div><div id="acR"></div>`;
+          $('app-content').innerHTML = h;
+          document.querySelectorAll('#acTabs .nav-link').forEach(a => {
+            a.addEventListener('click', e => {
+              e.preventDefault();
+              document.querySelectorAll('#acTabs .nav-link').forEach(l => l.classList.remove('active'));
+              a.classList.add('active');
+              curTab = tabs[parseInt(a.dataset.tab, 10)];
+              pageOffset = 0;
+              loadAcTab();
+            });
+          });
+          loadAcTab();
+        }
+
+        window.loadAcTab = async () => {
+          const r = $('acR'); if (!r || !curTab) return;
+          r.innerHTML = renderLoading();
+          const p = new URLSearchParams();
+          const s = $('acS')?.value; if (s) p.set('search', s);
+          const an = $('acAnio')?.value; if (an) p.set('anio', an);
+          p.set('limit', PAGE_SIZE + 1);
+          p.set('offset', pageOffset);
+          try {
+            const d = await API.get(`/api/${curTab.ep}?${p.toString()}`);
+            const pd = paginateData(d);
+            r.innerHTML = `<div class="card"><div class="card-header d-flex justify-content-between">
+              <span>${curTab.label}</span><span class="text-muted small">${d.length} registros</span></div>
+              <div class="card-body p-0">${buildAcTable(curTab.cols, pd.data, curTab.key, curTab.detail)}${paginationBar(pd.hasNext)}</div></div>`;
+          } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
+        };
+
+        window.clearAc = () => {
+          pageOffset = 0;
+          ['acS'].forEach(id => { const e = $(id); if (e) e.value = ''; });
+          const ay = $('acAnio'); if (ay) ay.value = '';
+          loadAcTab();
+        };
+
+        reloadFn = () => loadAcTab();
+        renderAc();
+      },
       compras_tesoreria: () => {
         const tabs = [
           {id:'ordenespago',label:'Órdenes de Pago',ep:'compras-tesoreria/ordenespago',cols:epCols('compras-tesoreria/ordenespago')},
@@ -1390,38 +1951,24 @@
           r.innerHTML = renderLoading();
           try {
             const res = await API.get(`/api/compras-tesoreria/ordenespago/${promoviid}/aplicacion`);
-            const ord = res.orden;
+            let h = `<div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Orden de Pago</h5>
+              <button class="btn btn-sm btn-outline-secondary" onclick="loadCTTab()"><i class="bi bi-arrow-left"></i> Volver</button>
+            </div>`;
+            h += renderOrdenPagoVoucher(res);
             const imps = res.imputaciones || [];
-            let h = `<div class="card mb-2"><div class="card-header d-flex justify-content-between">
-              <span><strong>OP ${ord.comp}</strong> - ${esc(ord.nombre)}</span>
-              <button class="btn btn-sm btn-outline-secondary" onclick="loadCTTab()"><i class="bi bi-arrow-left"></i> Volver</button></div>
-              <div class="card-body">
-                <div class="row text-center mb-3">
-                  <div class="col-6"><small class="text-muted">Total OP</small><div class="fw-bold fs-5">${money(res.total_orden)}</div></div>
-                  <div class="col-6"><small class="text-muted">Total Aplicado</small><div class="fw-bold fs-5 ${(res.total_orden - res.total_aplicado)===0?'text-success':'text-warning'}">${money(res.total_aplicado)}</div></div>
-                </div>
-                <div class="row">
-                  <div class="col-md-4"><div class="detail-panel"><dl>`;
-            [['Proveedor',ord.nombre],['CUIT',ord.cuit],['Fecha',ord.fecha],['Venc',ord.fechaven],
-             ['Pago',ord.pago_nombre||ord.pago],['Moneda',ord.moneda],['Estado',ord.estadoreg],
-             ['Nota',ord.nota]].forEach(([l,v])=>{h+=`<dt>${l}</dt><dd>${esc(v)}</dd>`;});
-            h+=`</dl></div></div>
-              <div class="col-md-8"><h6 class="mb-2">Facturas / Documentos Aplicados (${imps.length})</h6>`;
-            if (imps.length > 0) {
-              h += buildTable([
-                {key:'tipo_factura',label:'Tipo'},
-                {key:'comp_factura',label:'Factura Nro'},
-                {key:'importe_aplicado',label:'Aplicado',render:v=>`<strong>${money(v)}</strong>`},
-                {key:'detalle',label:'Detalle',render:v=>esc(v||'')},
-                {key:'recibo_origen',label:'Recibo'},
-                {key:'factura',label:'Total Factura',render:v=>v?money(v.total):'<em class="text-muted">N/D</em>'},
-                {key:'factura',label:'Fecha Fac.',render:v=>v?esc(v.fecha):''},
-                {key:'factura',label:'Cliente',render:v=>v?esc(v.cliente):''}
-              ], imps);
-            } else {
-              h += '<div class="alert alert-info">Sin imputaciones registradas en proimpu para esta orden de pago</div>';
+            if (imps.length) {
+              h += `<details class="mb-2"><summary class="small text-muted" style="cursor:pointer">Detalle de facturas aplicadas (${imps.length})</summary>
+                <div class="pt-2">${buildTable([
+                  {key:'tipo_factura',label:'Tipo'},
+                  {key:'comp_factura',label:'Factura Nro'},
+                  {key:'importe_aplicado',label:'Aplicado',render:v=>`<strong>${money(v)}</strong>`},
+                  {key:'detalle',label:'Detalle',render:v=>esc(v||'')},
+                  {key:'recibo_origen',label:'Recibo'},
+                  {key:'factura',label:'Total Factura',render:v=>v?money(v.total):'<em class="text-muted">N/D</em>'},
+                  {key:'factura',label:'Fecha Fac.',render:v=>v?esc(v.fecha):''}
+                ], imps)}</div></details>`;
             }
-            h += `</div></div></div></div>`;
             r.innerHTML = h;
           } catch(e) { r.innerHTML = `<div class="alert alert-danger">${e.error||e.message}</div>`; }
         };

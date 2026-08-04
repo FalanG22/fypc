@@ -40,6 +40,7 @@ const apiRoutes = [
   ['/api/compras-tesoreria', './routes/compras_tesoreria'],
   ['/api/maestros', './routes/maestros'],
   ['/api/ctacte', './routes/ctacte'],
+  ['/api/analisis-cobranzas', './routes/analisis_cobranzas'],
 ];
 apiRoutes.forEach(([mount, mod]) => {
   app.use(mount, auth, require(mod));

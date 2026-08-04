@@ -2,21 +2,147 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+function idSinClase(id) {
+  const s = (id || '').trim();
+  const m = s.match(/^([A-Z]{2})(\d+)([A-Z])(\d+)$/);
+  return m ? `${m[1]}${m[2]}${m[4]}` : s;
+}
+
+function splitMediosRetenciones(rows) {
+  const medios_pago = [];
+  const retenciones = [];
+  rows.forEach((row) => {
+    if (row.es_retencion) retenciones.push(row);
+    else medios_pago.push(row);
+  });
+  const cheques = medios_pago.filter(
+    (m) =>
+      m.valortipo === 'C' ||
+      m.valortipo === 'P' ||
+      (m.tipo_nombre && /cheque|echeq/i.test(m.tipo_nombre))
+  );
+  const transferencias = medios_pago.filter(
+    (m) =>
+      m.tipo === '04' ||
+      (m.tipo_nombre && /transfer/i.test(m.tipo_nombre)) ||
+      (m.detalle && /transfer/i.test(m.detalle))
+  );
+  return {
+    medios_pago,
+    retenciones,
+    resumen: {
+      cant_lineas: rows.length,
+      cant_cheques: cheques.length,
+      cant_transferencias: transferencias.length,
+      cant_retenciones: retenciones.length,
+      total_entrada: medios_pago.reduce((s, m) => s + (parseFloat(m.impentra) || 0), 0),
+      total_salida: medios_pago.reduce((s, m) => s + (parseFloat(m.impsale) || 0), 0),
+      total_retenido: retenciones.reduce(
+        (s, m) => s + (parseFloat(m.impsale) || parseFloat(m.impentra) || 0),
+        0
+      ),
+    },
+  };
+}
+
+/** Caja de la OP: solo por pagosid / promoviid (sin comp suelto → evita CH/CQ/CD). */
+async function queryMediosOrdenPago(promoviid, pagosId) {
+  const ids = [...new Set([
+    promoviid,
+    idSinClase(promoviid),
+    (pagosId || '').trim(),
+  ].filter(Boolean))];
+  if (!ids.length) return splitMediosRetenciones([]);
+
+  const sql = `
+    SELECT DISTINCT ON (cm.cajamovid)
+           cm.cajamovid, cm.fecha, cm.comp, cm.detalle, cm.tipo, ct.nombre AS tipo_nombre,
+           ct.valortipo, cm.documento, cm.impentra, cm.impsale, cm.numero, cm.numcheque,
+           cm.vence, cm.banco, b.nombre AS banco_nombre, cm.cuenta, cu.nombre AS cuenta_nombre,
+           cm.caja, cm.c_baseimponible, cm.c_alicuotaret,
+           (COALESCE(cm.c_alicuotaret, 0) <> 0
+            OR COALESCE(ct.retencion, '') = 'S'
+            OR ct.nombre ILIKE '%Retención%'
+            OR ct.nombre ILIKE '%retención%'
+            OR cu.nombre ILIKE '%Reten%') AS es_retencion
+    FROM cajamov cm
+    LEFT JOIN cajatipo ct ON cm.tipo = ct.tipo
+    LEFT JOIN bancos b ON TRIM(cm.banco::text) = TRIM(b.codigo::text)
+    LEFT JOIN LATERAL (
+      SELECT nombre FROM cuentas WHERE cuenta = cm.cuenta AND caja = cm.caja LIMIT 1
+    ) cu ON true
+    WHERE COALESCE(cm.reversion, 0) = 0
+      AND (cm.parentpagoid = ANY($1::text[]) OR cm.parentpromoviid = ANY($1::text[]))
+    ORDER BY cm.cajamovid, cm.fecha`;
+
+  const r = await db.query(sql, [ids]);
+  return splitMediosRetenciones(r.rows);
+}
+
+async function queryImputacionesOrdenPago(promoviid, pagosid) {
+  const r = await db.query(
+    `
+    SELECT DISTINCT ON (pi.codigo, pi.comp, pi.importe, pi.fecha)
+           pi.codigo AS codigo_factura,
+           pi.comp AS comp_factura,
+           COALESCE(t.nombre, pi.codigo) AS tipo_factura,
+           pi.importe AS importe_aplicado,
+           pi.detalle,
+           pi.fecha AS fecha_aplicacion,
+           pi.recibo AS recibo_origen,
+           pi.parentpromoviid AS factura_promoviid,
+           pf.fecha AS fac_fecha,
+           pf.nombre AS fac_cliente,
+           pf.cuit AS fac_cuit,
+           (COALESCE(pf.neto,0)+COALESCE(pf.iva,0)+COALESCE(pf.percepcion,0)+COALESCE(pf.retencion,0)) AS fac_total,
+           pf.neto AS fac_neto, pf.iva AS fac_iva, pf.percepcion AS fac_percepcion
+    FROM proimpu pi
+    LEFT JOIN tranparamcompras t ON pi.codigo = t.codigo
+    LEFT JOIN promovi pf ON pf.promoviid = pi.parentpromoviid
+    WHERE pi.parentreciboid = $1
+       OR ($2 <> '' AND pi.parentopagoid = $2)
+    ORDER BY pi.codigo, pi.comp, pi.importe, pi.fecha`,
+    [promoviid, (pagosid || '').trim()]
+  );
+  return r.rows.map((row) => ({
+    codigo_factura: row.codigo_factura,
+    comp_factura: row.comp_factura,
+    tipo_factura: row.tipo_factura,
+    importe_aplicado: row.importe_aplicado,
+    detalle: row.detalle,
+    fecha_aplicacion: row.fecha_aplicacion,
+    recibo_origen: row.recibo_origen,
+    factura: row.fac_total != null ? {
+      total: row.fac_total,
+      neto: row.fac_neto,
+      iva: row.fac_iva,
+      percepcion: row.fac_percepcion,
+      fecha: row.fac_fecha,
+      cliente: row.fac_cliente,
+      cuit: row.fac_cuit,
+    } : null,
+  }));
+}
+
 router.get('/ordenespago', async (req, res) => {
   try {
     const { search, desde, hasta, limit, offset } = req.query;
+    // Listar RS (órdenes/recibos de pago a proveedores), no facturas FS
     let sql = `SELECT p.promoviid, p.clase, p.codigo, p.comp, p.fecha, p.fechaven,
-               p.nombre, p.cuit, p.neto, p.iva, p.percepcion, p.retencion,
+               COALESCE(NULLIF(TRIM(p.nombre), ''), pr.nombre) AS nombre,
+               COALESCE(NULLIF(TRIM(p.cuit), ''), pr.cuit) AS cuit,
+               p.neto, p.iva, p.percepcion, p.retencion,
                (COALESCE(p.neto,0)+COALESCE(p.iva,0)+COALESCE(p.percepcion,0)+COALESCE(p.retencion,0)) as total,
                p.pago, p.moneda, p.estadoreg, p.proveedor, p.comprob, p.ordcomp,
                p.pagosid, p.nota,
                pg.detalle as pago_nombre
                FROM promovi p
+               LEFT JOIN proveedo pr ON p.proveedor = pr.proveedor
                LEFT JOIN pagos pg ON p.pago = pg.pago
-               WHERE p.clase IN ('A','B','C') AND p.neto != 0`;
+               WHERE p.codigo = 'RS' AND COALESCE(p.neto, 0) <> 0`;
     const conditions = []; const params = [];
     if (search) {
-      conditions.push(`(p.comp::text ILIKE $${params.length+1} OR p.nombre ILIKE $${params.length+1} OR p.proveedor ILIKE $${params.length+1})`);
+      conditions.push(`(p.comp::text ILIKE $${params.length+1} OR COALESCE(NULLIF(TRIM(p.nombre),''), pr.nombre) ILIKE $${params.length+1} OR p.proveedor ILIKE $${params.length+1} OR COALESCE(NULLIF(TRIM(p.cuit),''), pr.cuit) ILIKE $${params.length+1})`);
       params.push(`%${search}%`);
     }
     if (desde) { conditions.push(`p.fecha >= $${params.length+1}`); params.push(desde); }
@@ -34,63 +160,34 @@ router.get('/ordenespago/:id/aplicacion', async (req, res) => {
     const { id } = req.params;
 
     const orden = await db.query(`
-      SELECT p.*, pg.detalle as pago_nombre
-      FROM promovi p LEFT JOIN pagos pg ON p.pago = pg.pago
+      SELECT p.*,
+             pg.detalle as pago_nombre,
+             COALESCE(NULLIF(TRIM(p.nombre), ''), pr.nombre) AS nombre,
+             COALESCE(NULLIF(TRIM(p.cuit), ''), pr.cuit) AS cuit,
+             pr.domicilio AS prov_domicilio,
+             pr.localidad AS prov_localidad,
+             pr.provincia AS prov_provincia
+      FROM promovi p
+      LEFT JOIN pagos pg ON p.pago = pg.pago
+      LEFT JOIN proveedo pr ON p.proveedor = pr.proveedor
       WHERE p.promoviid = $1`, [id]);
 
     if (orden.rows.length === 0) return res.status(404).json({ error: 'Orden no encontrada' });
 
-    const imp = await db.query(`
-      SELECT pi.codigo, pi.comp, SUM(pi.importe) as importe,
-             MAX(pi.detalle) as detalle,
-             MAX(pi.recibo) as recibo_origen,
-             MAX(pi.fecha) as fecha,
-             MIN(m.neto) as fac_neto, MIN(m.iva) as fac_iva,
-             MIN(m.exento) as fac_exento, MIN(m.percepcion) as fac_percepcion,
-             MIN(m.fecha) as fac_fecha, MIN(m.fechaven) as fac_fechaven,
-             MIN(m.nombre) as fac_cliente, MIN(m.cuit) as fac_cuit,
-             MIN((COALESCE(m.neto,0)+COALESCE(m.iva,0)+COALESCE(m.exento,0)+COALESCE(m.percepcion,0))) as fac_total,
-             MIN(m.campocae) as fac_cae, MIN(m.estadodoc) as fac_estado,
-             MIN(t.nombre) as fac_tipo
-      FROM proimpu pi
-      LEFT JOIN movi m ON m.comp = pi.comp
-      LEFT JOIN tranparamventas t ON pi.codigo = t.codigo
-      WHERE pi.parentpromoviid = $1
-      GROUP BY pi.codigo, pi.comp
-      ORDER BY MIN(pi.fecha)`, [id]);
-
-    let totalAplicado = 0;
-    const imputaciones = imp.rows.map(r => {
-      totalAplicado += parseFloat(r.importe) || 0;
-      return {
-        codigo_factura: r.codigo,
-        comp_factura: r.comp,
-        tipo_factura: r.fac_tipo,
-        importe_aplicado: r.importe,
-        detalle: r.detalle,
-        fecha_aplicacion: r.fecha,
-        recibo_origen: r.recibo,
-        factura: r.fac_total ? {
-          total: r.fac_total,
-          neto: r.fac_neto,
-          iva: r.fac_iva,
-          exento: r.fac_exento,
-          percepcion: r.fac_percepcion,
-          fecha: r.fac_fecha,
-          vencimiento: r.fac_fechaven,
-          cliente: r.fac_cliente,
-          cuit: r.fac_cuit,
-          cae: r.fac_cae,
-          estado: r.fac_estado
-        } : null
-      };
-    });
+    const ord = orden.rows[0];
+    const imputaciones = await queryImputacionesOrdenPago(id, ord.pagosid);
+    const totalAplicado = imputaciones.reduce((s, r) => s + (parseFloat(r.importe_aplicado) || 0), 0);
+    const medios = await queryMediosOrdenPago(id, ord.pagosid);
 
     res.json({
-      orden: orden.rows[0],
+      orden: ord,
       imputaciones,
-      total_orden: (parseFloat(orden.rows[0].neto)||0) + (parseFloat(orden.rows[0].iva)||0) + (parseFloat(orden.rows[0].percepcion)||0) + (parseFloat(orden.rows[0].retencion)||0),
-      total_aplicado: totalAplicado
+      total_orden: (parseFloat(ord.neto)||0) + (parseFloat(ord.iva)||0) + (parseFloat(ord.percepcion)||0) + (parseFloat(ord.retencion)||0),
+      total_aplicado: totalAplicado,
+      total_imputado: totalAplicado,
+      medios_pago: medios.medios_pago,
+      retenciones: medios.retenciones,
+      resumen: medios.resumen
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
